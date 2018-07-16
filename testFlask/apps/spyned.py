@@ -8,9 +8,13 @@ from spyne.protocol.soap import Soap11
 from spyne.service import ServiceBase
 from spyne.server.wsgi import WsgiApplication
 
-MailDispatchMode = Unicode(values=['TO', 'CC', 'BCC'])
-MailAttachmentMode = Unicode(values=['EMBEDDED_IN_BODY', 'AS_ATTACHMENT'])
-requestStatus = Unicode(values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED'])
+# MailDispatchMode = Unicode(values=['TO', 'CC', 'BCC'])
+# MailAttachmentMode = Unicode(values=['EMBEDDED_IN_BODY', 'AS_ATTACHMENT'])
+# requestStatus = Unicode(values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED'])
+# class requestStatus(Unicode):
+#     class Attributes(Unicode.Attributes):
+#         values = ['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED']
+
 
 
 class Diffusion(ComplexModel):
@@ -20,6 +24,9 @@ class Diffusion(ComplexModel):
     fileName = Unicode
 
 class FTPDiffusion(Diffusion):
+
+    class Attributes(Diffusion.Attributes):
+        exc_interface = True
 
     __namespace__="http://dissemination.harness.openwis.org/"
 
@@ -38,8 +45,8 @@ class MailDiffusion(Diffusion):
     address = Unicode
     headerLine = Unicode
     subject = Unicode
-    dispatchMode = MailDispatchMode
-    attachmentMode = MailAttachmentMode
+    dispatchMode = Unicode(values=['TO', 'CC', 'BCC'])
+    attachmentMode = Unicode(values=['EMBEDDED_IN_BODY', 'AS_ATTACHMENT'])
 
 
 class DisseminationStatus(ComplexModel):
@@ -47,7 +54,7 @@ class DisseminationStatus(ComplexModel):
     __namespace__="http://dissemination.harness.openwis.org/"
 
     requestId = Unicode
-    requestStatus = requestStatus
+    requestStatus = Unicode(values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED'])
     message = Unicode
 
     def __init__(self,  requestId, requestStatus, message):
@@ -84,18 +91,27 @@ class DisseminationInfo(ComplexModel):
 
 class DisseminationService(ServiceBase):
     @srpc(Unicode, Unicode, DisseminationInfo, _returns=DisseminateResponse)
-    def disseminate(requestId, fileURI, testObject):
-        print(testObject.priority, testObject.SLA)
+    def disseminate(requestId, fileURI, disseminationInfo):
+        print(disseminationInfo.priority, disseminationInfo.SLA)
 
-        status = DisseminationStatus("reqId_1234", 'ONGOING_DISSEMINATION', "mess_hello")
+        status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
         dissResp = DisseminateResponse(status)
 
 
         return dissResp
 
+    @srpc(Unicode, _returns=DisseminateResponse)
+    def monitorDissemination(requestId):
+        
+        status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
+        dissResp = DisseminateResponse(status)
+
+
+        return dissResp
 
 application = Application(
     [DisseminationService], 'http://dissemination.harness.openwis.org/',
+    name="Dissemination",
     # The input protocol is set as HttpRpc to make our service easy to call.
     # in_protocol=HttpRpc(validator='soft'),
     # out_protocol=JsonDocument(ignore_wrappers=True),
