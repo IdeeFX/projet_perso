@@ -16,11 +16,14 @@ from collections import namedtuple
 # testSent = TestClient("machin","truc")
 
 
-client = Client('http://localhost:5000/soap/disseminate?wsdl')
+client = Client('http://localhost:5000/soap?wsdl')
+
 
 factory = client.type_factory('http://dissemination.harness.openwis.org/')
-testSent = factory.TestComplex(var1='John',var2=5)
-result = client.service.disseminate(requestId="Dave", fileURI="truc", testObject=testSent)
-print(result)
+info = factory.DisseminationInfo(priority=5,SLA=6,dataPolicy="truc")
+# testSent = factory.TestComplex(var1='John',var2=5)
+result = client.service.disseminate(requestId="Dave", fileURI="truc", disseminationInfo=info)
+# print(result)
+print("fin")
 # node = client.create_message(client.service, 'disseminate', requestId="Dave", fileURI="truc")
 # print(node)

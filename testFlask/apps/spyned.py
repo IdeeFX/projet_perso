@@ -111,7 +111,7 @@ class DisseminationService(ServiceBase):
 
 application = Application(
     [DisseminationService], 'http://dissemination.harness.openwis.org/',
-    name="Dissemination",
+    name="DisseminationImplService",
     # The input protocol is set as HttpRpc to make our service easy to call.
     # in_protocol=HttpRpc(validator='soft'),
     # out_protocol=JsonDocument(ignore_wrappers=True),
