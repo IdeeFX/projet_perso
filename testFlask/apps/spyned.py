@@ -1,5 +1,5 @@
 from spyne.application import Application
-from spyne.decorator import srpc
+from spyne.decorator import srpc, rpc
 from spyne.model.complex import ComplexModel
 from spyne.model.primitive import Integer, Unicode, Boolean
 # from spyne.protocol.http import HttpRpc
@@ -8,12 +8,12 @@ from spyne.protocol.soap import Soap11
 from spyne.service import ServiceBase
 from spyne.server.wsgi import WsgiApplication
 
-# MailDispatchMode = Unicode(values=['TO', 'CC', 'BCC'])
-# MailAttachmentMode = Unicode(values=['EMBEDDED_IN_BODY', 'AS_ATTACHMENT'])
-# requestStatus = Unicode(values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED'])
-# class requestStatus(Unicode):
-#     class Attributes(Unicode.Attributes):
-#         values = ['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED']
+MailDispatchMode = Unicode(values=['TO', 'CC', 'BCC'])
+MailAttachmentMode = Unicode(values=['EMBEDDED_IN_BODY', 'AS_ATTACHMENT'])
+requestStatus = Unicode(values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED'])
+class requestStatus(Unicode):
+    class Attributes(Unicode.Attributes):
+        values = ['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED']
 
 
 
@@ -89,9 +89,12 @@ class DisseminationInfo(ComplexModel):
     alternativeDiffusion = Diffusion
 
 
-class DisseminationService(ServiceBase):
-    @srpc(Unicode, Unicode, DisseminationInfo, _returns=DisseminateResponse)
-    def disseminate(requestId, fileURI, disseminationInfo):
+class DisseminationImplService(ServiceBase):
+
+    __port_types__ = ['DisseminationImplPort']
+
+    @rpc(Unicode, Unicode, DisseminationInfo, _soap_port_type='DisseminationImplPort', _returns=DisseminateResponse)
+    def disseminate(self, requestId, fileURI, disseminationInfo):
         print(disseminationInfo.priority, disseminationInfo.SLA)
 
         status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
@@ -100,8 +103,8 @@ class DisseminationService(ServiceBase):
 
         return dissResp
 
-    @srpc(Unicode, _returns=DisseminateResponse)
-    def monitorDissemination(requestId):
+    @rpc(Unicode, _returns=DisseminateResponse, _soap_port_type='DisseminationImplPort')
+    def monitorDissemination(self,requestId):
         
         status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
         dissResp = DisseminateResponse(status)
@@ -110,7 +113,7 @@ class DisseminationService(ServiceBase):
         return dissResp
 
 application = Application(
-    [DisseminationService], 'http://dissemination.harness.openwis.org/',
+    [DisseminationImplService], 'http://dissemination.harness.openwis.org/',
     name="DisseminationImplService",
     # The input protocol is set as HttpRpc to make our service easy to call.
     # in_protocol=HttpRpc(validator='soft'),
