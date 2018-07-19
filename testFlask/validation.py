@@ -17,6 +17,9 @@ from collections import namedtuple
 
 
 client = Client('http://localhost:5000/soap?wsdl')
+#client = Client('http://localhost:5000/Dissemination?wsdl')
+#client = Client('http://wisauth-int-p.meteo.fr:9000/Dissemination?wsdl')
+#client = Client('http://wisha-p.meteo.fr:8080/openwis-harness-diss-ws-1.0-SNAPSHOT/Dissemination?wsdl')
 
 
 factory = client.type_factory('http://dissemination.harness.openwis.org/')
