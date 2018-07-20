@@ -89,12 +89,15 @@ class DisseminationInfo(ComplexModel):
     alternativeDiffusion = Diffusion
 
 
-class DisseminationImplService(ServiceBase):
+class DisseminationService(ServiceBase):
 
+    # __service_name__  = "DisseminationImplService"
     __port_types__ = ['DisseminationImplPort']
-
-    @rpc(Unicode, Unicode, DisseminationInfo, _soap_port_type='DisseminationImplPort', _returns=DisseminateResponse)
-    def disseminate(self, requestId, fileURI, disseminationInfo):
+    @srpc(Unicode, Unicode, DisseminationInfo, _port_type='DisseminationImplPort', _returns=DisseminateResponse)
+    def disseminate(requestId, fileURI, disseminationInfo):
+    # @rpc(Unicode, Unicode, DisseminationInfo, _returns=DisseminateResponse)
+    # def disseminate(self,requestId, fileURI, disseminationInfo):
+    
         print(disseminationInfo.priority, disseminationInfo.SLA)
 
         status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
@@ -103,17 +106,19 @@ class DisseminationImplService(ServiceBase):
 
         return dissResp
 
-    @rpc(Unicode, _returns=DisseminateResponse, _soap_port_type='DisseminationImplPort')
-    def monitorDissemination(self,requestId):
+    # @srpc(Unicode, _returns=DisseminateResponse, _soap_port_type='DisseminationImplPort')
+    # def monitorDissemination(requestId):
+    # # @rpc(Unicode, _returns=DisseminateResponse)
+    # # def monitorDissemination(ctx,requestId):
         
-        status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
-        dissResp = DisseminateResponse(status)
+    #     status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
+    #     dissResp = DisseminateResponse(status)
 
 
-        return dissResp
+    #     return dissResp
 
 application = Application(
-    [DisseminationImplService], 'http://dissemination.harness.openwis.org/',
+    [DisseminationService], 'http://dissemination.harness.openwis.org/',
     name="DisseminationImplService",
     # The input protocol is set as HttpRpc to make our service easy to call.
     # in_protocol=HttpRpc(validator='soft'),
@@ -124,3 +129,5 @@ application = Application(
 
 
 wsgi_application = WsgiApplication(application)
+
+print("ok")

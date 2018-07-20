@@ -16,6 +16,7 @@ from collections import namedtuple
 # testSent = TestClient("machin","truc")
 
 
+# client = Client('http://localhost:5000/soap?wsdl', port_name="DisseminationImplPort")
 client = Client('http://localhost:5000/soap?wsdl')
 #client = Client('http://localhost:5000/Dissemination?wsdl')
 #client = Client('http://wisauth-int-p.meteo.fr:9000/Dissemination?wsdl')
