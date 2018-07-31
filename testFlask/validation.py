@@ -17,8 +17,8 @@ from collections import namedtuple
 
 
 # client = Client('http://localhost:5000/soap?wsdl', port_name="DisseminationImplPort")
-client = Client('http://localhost:5000/soap?wsdl')
-#client = Client('http://localhost:5000/Dissemination?wsdl')
+#client = Client('http://localhost:5000/soap?wsdl')
+client = Client('http://localhost:5000/Dissemination?wsdl')
 #client = Client('http://wisauth-int-p.meteo.fr:9000/Dissemination?wsdl')
 #client = Client('http://wisha-p.meteo.fr:8080/openwis-harness-diss-ws-1.0-SNAPSHOT/Dissemination?wsdl')
 
@@ -26,6 +26,7 @@ client = Client('http://localhost:5000/soap?wsdl')
 factory = client.type_factory('http://dissemination.harness.openwis.org/')
 info = factory.DisseminationInfo(priority=5,SLA=6,dataPolicy="truc")
 # testSent = factory.TestComplex(var1='John',var2=5)
+client.settings(raw_response=True)
 result = client.service.disseminate(requestId="Dave", fileURI="truc", disseminationInfo=info)
 print(result)
 print("fin")

@@ -1,8 +1,9 @@
 from spyne.application import Application
 from spyne.decorator import srpc, rpc
 from spyne.model.complex import ComplexModel
+from lxml import etree
 
-from spyne.interface.wsdl.wsdl11 import Wsdl11, check_method_port, SubElement,WSDL11
+from spyne.interface.wsdl.wsdl11 import Wsdl11, check_method_port, SubElement,WSDL11,WSDL11_SOAP
 # from lxml.etree import SubElement
 from spyne.model.primitive import Integer, Unicode, Boolean
 # from spyne.protocol.http import HttpRpc
@@ -11,81 +12,91 @@ from spyne.protocol.soap import Soap11
 from spyne.service import ServiceBase
 from spyne.server.wsgi import WsgiApplication
 
+from spyne.const import xml
+
+
+from spyne.interface.xml_schema._base import XmlSchema
+
+NS_XML = 'http://www.w3.org/XML/1998/namespace'
+NS_XSD = 'http://www.w3.org/2001/XMLSchema'
+NS_XSI = 'http://www.w3.org/2001/XMLSchema-instance'
+NS_WSA = 'http://schemas.xmlsoap.org/ws/2003/03/addressing'
+NS_XOP = 'http://www.w3.org/2004/08/xop/include'
+NS_XHTML = 'http://www.w3.org/1999/xhtml'
+NS_PLINK = 'http://schemas.xmlsoap.org/ws/2003/05/partner-link/'
+NS_SOAP11_ENC = 'http://schemas.xmlsoap.org/soap/encoding/'
+NS_SOAP11_ENV = 'http://schemas.xmlsoap.org/soap/envelope/'
+NS_SOAP12_ENC = 'http://www.w3.org/2003/05/soap-encoding'
+NS_SOAP12_ENV = 'http://www.w3.org/2003/05/soap-envelope'
+
+NS_WSDL11 = 'http://schemas.xmlsoap.org/wsdl/'
+NS_WSDL11_SOAP = 'http://schemas.xmlsoap.org/wsdl/soap/'
+NS_WSDL12_SOAP = 'http://schemas.xmlsoap.org/wsdl/soap12/'
+
+NSMAP = {
+    'xml': NS_XML,
+    'xs': NS_XSD,
+    'xsi': NS_XSI,
+    'plink': NS_PLINK,
+    'soap': NS_WSDL11_SOAP,
+    'wsdlsoap12': NS_WSDL12_SOAP,
+    'wsdl': NS_WSDL11,
+    'soap11enc': NS_SOAP11_ENC,
+    'soap11env': NS_SOAP11_ENV,
+    'soap12env': NS_SOAP12_ENV,
+    'soap12enc': NS_SOAP12_ENC,
+    'wsa': NS_WSA,
+    'xop': NS_XOP,
+}
+
+xml.NSMAP = NSMAP
+
 
 def _get_binding_name(self, port_type_name):
-    if port_type_name == "DisseminationImplPort":
+    if port_type_name == "Dissemination":
         port_type_name = "DisseminationImplServiceSoapBinding"
     return port_type_name # subclasses override to control port names.
 
 Wsdl11._get_binding_name = _get_binding_name
 
+def _add_port_to_service(self, service, port_name, binding_name):
+    """ Builds a wsdl:port for a service and binding"""
 
-def add_port_type(self, service, root, service_name, types, url):
-        # FIXME: I don't think this call is working.
-        cb_port_type = self._add_callbacks(service, root, types,
-                                                              service_name, url)
-        applied_service_name = self._get_applied_service_name(service)
+    pref_tns = self.interface.get_namespace_prefix(self.interface.tns)
 
-        port_binding_names = []
-        port_type_list = service.get_port_types()
-        if len(port_type_list) > 0:
-            for port_type_name in port_type_list:
-                port_type = self._get_or_create_port_type(port_type_name)
-                if port_type_name == "DisseminationImplPort":
-                    port_type.set('name', "Dissemination")
-                else:
-                    port_type.set('name', port_type_name)
+    wsdl_port = SubElement(service, WSDL11("port"))
+    if port_name == "Dissemination":
+        wsdl_port.set('name', "DisseminationImplPort")
+    else:
+        wsdl_port.set('name', port_name)
+    wsdl_port.set('binding', '%s:%s' % (pref_tns, binding_name))
 
-                binding_name = self._get_binding_name(port_type_name)
-                port_binding_names.append((port_type_name, binding_name))
+    addr = SubElement(wsdl_port, WSDL11_SOAP("address"))
+    addr.set('location', self.url)
 
-        else:
-            port_type = self._get_or_create_port_type(service_name)
-            port_type.set('name', service_name)
-
-            binding_name = self._get_binding_name(service_name)
-            port_binding_names.append((service_name, binding_name))
-
-        for method in service.public_methods.values():
-            check_method_port(service, method)
-
-            if method.is_callback:
-                operation = SubElement(cb_port_type, WSDL11("operation"))
-            else:
-                operation = SubElement(port_type, WSDL11("operation"))
-
-            operation.set('name', method.operation_name)
-
-            if method.doc is not None:
-                operation.append(E(WSDL11("documentation"), method.doc))
-
-            operation.set('parameterOrder', method.in_message.get_element_name())
-
-            op_input = SubElement(operation, WSDL11("input"))
-            op_input.set('name', method.in_message.get_element_name())
-            op_input.set('message',
-                          method.in_message.get_element_name_ns(self.interface))
-
-            if (not method.is_callback) and (not method.is_async):
-                op_output = SubElement(operation, WSDL11("output"))
-                op_output.set('name', method.out_message.get_element_name())
-                op_output.set('message', method.out_message.get_element_name_ns(
-                                                                self.interface))
-
-                if not (method.faults is None):
-                    for f in method.faults:
-                        fault = SubElement(operation, WSDL11("fault"))
-                        fault.set('name', f.get_type_name())
-                        fault.set('message', '%s:%s' % (
-                                        f.get_namespace_prefix(self.interface),
-                                        f.get_type_name()))
-
-        ser = self.service_elt_dict[applied_service_name]
-        for port_name, binding_name in port_binding_names:
-            self._add_port_to_service(ser, port_name, binding_name)
+Wsdl11._add_port_to_service = _add_port_to_service
 
 
-Wsdl11.add_port_type = add_port_type
+def get_schema_node(self, pref):
+    """Return schema node for the given namespace prefix."""
+
+    if not (pref in self.schema_dict):
+        schema = etree.Element(xml.XSD('schema'),
+                                                    nsmap=self.interface.nsmap)
+
+        schema.set("targetNamespace", self.interface.nsmap[pref])
+        schema.set("elementFormDefault", "unqualified")
+        # schema.set("elementFormDefault", "qualified")
+
+        self.schema_dict[pref] = schema
+
+    else:
+        schema = self.schema_dict[pref]
+
+    return schema
+
+XmlSchema.get_schema_node = get_schema_node
+
 
 MailDispatchMode = Unicode(values=['TO', 'CC', 'BCC'])
 MailAttachmentMode = Unicode(values=['EMBEDDED_IN_BODY', 'AS_ATTACHMENT'])
@@ -131,10 +142,15 @@ class MailDiffusion(Diffusion):
 class DisseminationStatus(ComplexModel):
 
     __namespace__="http://dissemination.harness.openwis.org/"
+    # __namespace__="machin"
 
-    requestId = Unicode
-    requestStatus = Unicode(values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED'])
-    message = Unicode
+    # class Attributes(ComplexModel.Attributes):
+    #     sub_ns = "machin"
+
+
+    requestId = Unicode.customize(sub_ns="")
+    requestStatus = Unicode(values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED']).customize(sub_ns="")
+    message = Unicode.customize(sub_ns="")
 
     def __init__(self,  requestId, requestStatus, message):
         # don't forget to call parent class initializer
@@ -143,16 +159,16 @@ class DisseminationStatus(ComplexModel):
         self.requestStatus = requestStatus
         self.message = message 
 
-class DisseminateResponse(ComplexModel):
+# class DisseminateResponse(ComplexModel):
 
-    __namespace__="http://dissemination.harness.openwis.org/"
+#     __namespace__="http://dissemination.harness.openwis.org/"
 
-    disseminationResult = DisseminationStatus
+#     disseminationResult = DisseminationStatus
 
-    def __init__(self,  disseminationResult):
-        # don't forget to call parent class initializer
-        super(DisseminateResponse, self).__init__()
-        self.disseminationResult = disseminationResult
+#     def __init__(self,  disseminationResult):
+#         # don't forget to call parent class initializer
+#         super(DisseminateResponse, self).__init__()
+#         self.disseminationResult = disseminationResult
 
 
 
@@ -168,33 +184,44 @@ class DisseminationInfo(ComplexModel):
     alternativeDiffusion = Diffusion
 
 
+
 class DisseminationImplService(ServiceBase):
 
     # __service_name__  = "DisseminationImplService"
-    __port_types__ = ['DisseminationImplPort']
-    @srpc(Unicode, Unicode, DisseminationInfo, _port_type='DisseminationImplPort', _returns=DisseminateResponse)
-    def disseminate(requestId, fileURI, disseminationInfo):
+    __port_types__ = ['Dissemination']
+    @rpc(Unicode, Unicode, DisseminationInfo, _port_type='Dissemination', _returns=DisseminationStatus,
+    _out_variable_name='disseminationResult')
+    def disseminate(ctx, requestId, fileURI, disseminationInfo):
     # @rpc(Unicode, Unicode, DisseminationInfo, _returns=DisseminateResponse)
     # def disseminate(self,requestId, fileURI, disseminationInfo):
     
         print(disseminationInfo.priority, disseminationInfo.SLA)
 
         status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
-        dissResp = DisseminateResponse(status)
+        dissResp = status
+        # dissResp.__namespace__= ""
+        print(dissResp.__namespace__)
+        ctx.descriptor.out_message._type_info['disseminationResult'].Attributes.sub_ns = "truc"
+        return dissResp
+
+        
+
+        # test = ctx.function.descriptor.out_message()
+        # test.disseminationResult = status
+        # test.disseminationResult.__namespace__ = ""
+        # print(test.disseminationResult.__namespace__)
+        # return test
+
+    @rpc(Unicode, _returns=DisseminationStatus, _port_type='Dissemination', _out_variable_name='disseminationStatus')
+    def monitorDissemination(ctx, requestId):
+    # @rpc(Unicode, _returns=DisseminateResponse)
+    # def monitorDissemination(ctx,requestId):
+        
+        status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
+        dissResp = status
 
 
         return dissResp
-
-    # @srpc(Unicode, _returns=DisseminateResponse, _soap_port_type='DisseminationImplPort')
-    # def monitorDissemination(requestId):
-    # # @rpc(Unicode, _returns=DisseminateResponse)
-    # # def monitorDissemination(ctx,requestId):
-        
-    #     status = DisseminationStatus(requestId, 'ONGOING_DISSEMINATION', "mess_hello")
-    #     dissResp = DisseminateResponse(status)
-
-
-    #     return dissResp
 
 application = Application(
     [DisseminationImplService], 'http://dissemination.harness.openwis.org/',
@@ -208,5 +235,10 @@ application = Application(
 
 
 wsgi_application = WsgiApplication(application)
+
+# wsgi_application.doc.wsdl11.interface.classes['disseminateResponse'].__namespace__ = ""
+
+# wsgi_application.doc.wsdl11.build_interface_document("truc")
+# wsgi_application.doc.wsdl11.root_elt[0].find('{http://www.w3.org/2001/XMLSchema}schema').attrib['elementFormDefault'] = "unqualified"
 
 print("ok")
