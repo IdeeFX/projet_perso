@@ -145,8 +145,12 @@ class Database():
         # TODO test if none
         with cls.get_app().app_context():
             record = Diffusion.query.filter_by(**kwargs).first()
+        if record is not None:
+            res = record.fullrequestId
+        else:
+            res = None
 
-        return record.fullrequestId
+        return res
 
 
     @classmethod

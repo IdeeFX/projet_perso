@@ -206,7 +206,6 @@ class DifmetSender:
             else:
                 LOGGER.info("File %s of size %f Mo sent to Diffmet in %f s",
                              file_, size, duration)
-            if upload_ok and not DEBUG:
                 os.remove(file_)
                 LOGGER.debug("File %s deleted", file_)
         except multiprocessing.TimeoutError:

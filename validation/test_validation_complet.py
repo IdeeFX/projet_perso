@@ -7,7 +7,6 @@ from zeep import Client
 from threading import Thread
 from time import sleep
 from tempfile import TemporaryDirectory, gettempdir
-from launcher import launch
 from validation.mock_server.soap_server import SoapServer
 from validation.mock_server.difmet_ftp import FTPserver
 from file_manager.manager import FileManager
@@ -114,9 +113,9 @@ with TemporaryDirectory(prefix="diffmet_") as deposit:
         FTPserver.stop_server()
 
 
-with TemporaryDirectory(prefix="ack_") as ack_depost:
+with TemporaryDirectory(prefix="ack_") as ack_deposit:
 
-    with open(join(ack_depost, "ack_file.acqdifmet.xml"),"w") as file_:
+    with open(join(ack_deposit, "ack_file.acqdifmet.xml"),"w") as file_:
         file_.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
                     "<acquittements>\n"
                     "  <acquittement>\n"
@@ -128,9 +127,9 @@ with TemporaryDirectory(prefix="ack_") as ack_depost:
                     "  </acquittement>\n"
                     "  <acquittementnumber>1</acquittementnumber>\n"
                     "</acquittements>\n")
-    SettingsManager.update(dict(harnaisAckDir=ack_depost),
+    SettingsManager.update(dict(harnaisAckDir=ack_deposit),
                             testing=True)
-    HarnessTree.setter("dir_ack", ack_depost, testing=True)
+    # HarnessTree.setter("dir_ack", ack_deposit, testing=True)
     thr = Thread(target=AckReceiver.process, kwargs={"max_loops":2})
 
 

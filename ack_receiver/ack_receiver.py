@@ -21,8 +21,8 @@ from webservice.server.application import APP
 # initialize LOGGER
 setup_logging()
 LOGGER = logging.getLogger(__name__)
-LOGGER_ACK = logging.getLogger("difmet_ack_message_handler")
-LOGGER_ALARM =   logging.getLogger("difmet_alarm_message_handler")
+LOGGER_ACK = logging.getLogger("difmet_ack_messages")
+LOGGER_ALARM =   logging.getLogger("difmet_alarm_message")
 LOGGER.debug("Logging configuration set up in %s", __name__)
 
 LOGGER.info("Ack Receiver setup complete")
@@ -147,8 +147,6 @@ class AckReceiver:
             req_id = Database.get_id_by_query(**dtb_key)
             status = ack.findtext("status")
             ack_type = ack.findtext("type")
-            prod_internalid = ack.findtext("product_internalid")
-            diff_internalid = ack.findtext("diff_internalid")
             # channel =
 
             keys = ["type",
@@ -190,9 +188,8 @@ class AckReceiver:
                 val = ack.findtext(key)
                 msg_list.append('{k} : {v}'.format(k=key,v=val))
 
-            ack_msg = msg_list[0] + "\n".join(msg_list)
+            ack_msg = msg_list[0] + "\n".join(msg_list[1:])
             LOGGER_ACK.debug("Ack message is : \n %s", ack_msg)
-
 
         return diff_success, req_id
 

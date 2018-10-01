@@ -151,8 +151,6 @@ class SettingsManager:
             LOGGER.warning("SettingsManager class attributes are NOT"
                            " meant to be set outside of tests.")
         cls._parameters[key] = value
-        # change the checksum to tell the settings have been modified
-        cls._checksum = b"1"
 
     @classmethod
     def update(cls, in_dict, testing=False):
@@ -160,8 +158,6 @@ class SettingsManager:
             LOGGER.warning("SettingsManager class attributes are NOT"
                            " meant to be set outside of tests.")
         cls._parameters.update(in_dict)
-        # change the checksum to tell the settings have been modified
-        cls._checksum = b"1"
 
 class DebugSettingsManager:
 
