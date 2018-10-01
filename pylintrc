@@ -1,0 +1,2 @@
+# see https://stackoverflow.com/a/34682044
+ignored-modules=flask_sqlalchemy

@@ -1,0 +1,5 @@
+{
+    "$schema": "https://raw.githubusercontent.com/silverbulleters/sonarqube-inject-vsc/master/schemas/sonarlint.json",
+    "serverId": "openwis-harnais-diss-v2",
+    "projectKey": "openwis-harnais:diss-v2"
+}

@@ -1,0 +1,1 @@
+* * * * * {{MFSERV_HOME}}/bin/cronwrap.sh -l -e -t 0 -- layer_wrapper --layers=plugin_harnais-diss-v2@mfserv -- python {{MODULE_RUNTIME_HOME}}/var/plugins/harnais-diss-v2/harness_launcher.py >> {{MODULE_RUNTIME_HOME}}/log/harnais_launcher.log 2>&1
