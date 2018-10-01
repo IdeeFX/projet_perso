@@ -1,0 +1,80 @@
+harnais:
+  # Chemin (relatif?) du répertoire des logs
+  logdir: /home/mdsi/davannefx/harnais/
+  # Repertoire principal du harnais
+  dir: /home/mdsi/davannefx/harnais/
+  # Repertoire de réception des ack
+  ackdir: /data/dif_wis_harnais2_int/Harness/
+  # Synchronisation en seconde entre le serveur
+  # actif et passif, si valeur à 0 indique qu’il n’y a pas de serveur passif.
+  synchro:
+openwis:
+  # Indique l’ip ou le hostname du serveur Openwis, si « localhost »
+  # la récupération des produits se fera via copie locale.
+  # Si champ vide le hostname sera récupérée au travers du
+  # service de réception des notifications.
+  host: wiss-p
+  # A noter que dans le cas de plusieurs serveurs Openwis, le user d’accès
+  # au stagging post sera configuré à l’identique sur les serveurs Openwis
+  sftpuser: openwis
+  #A noter que dans le cas de plusieurs serveurs Openwis, le mot de passe
+  # d’accès au stagging post sera configuré à l’identique sur les serveurs Openwis
+  sftppassword: $openwis
+
+  # A noter que dans le cas de plusieurs serveurs Openwis, le port d’accès au
+  # stagging post sera configuré à l’identique sur les serveurs Openwis
+  sftpport: 22
+
+  # chemin absolu du staging post
+  stagingpath: /data/openwis/stagingPost/
+
+diss:
+  # Ip ou hostname du serveur Difmet
+  host: difintg
+  ftpuser: tls_wis_harnais2_intg
+  ftppasswd: $dif_harness
+  ftpdir: adressed
+  ftpmode:
+  ftpport: 21
+# Port soap d’écoute du harnais
+soapport:
+# Temps en seconde d’attente avant le traitement des fichiers de directives temporaires.
+processFileIdle: 10
+# Nombre de fichiers de directives provisoire à traiter
+processFileDPmax:
+# Taille max (en Mega octet) des fichiers autorisés à être récupéré sur Openwis
+processFilesize:
+# Durée de conservation des fichiers de directives provisoires (en seconde)
+keepfiletime:
+# Bande passante (mbits) estimée, permettant la gestion du timeout
+bandwidth:
+# Expression régulière à appliquer aux fichiers tmp.zip
+tmpregex:
+# Première expression régulière à appliquer sur le fichier
+
+fileregex1:
+  pattern_in: '^[A-Z]_([a-zA-Z0-9,\-\+]+)_C_([A-Z0-9]+)_([0-9]+)_?.*\.(.*)$'
+  pattern_out: 'fr-met,\g<1>\g<2>,[:$sequence]-[:$hostname],\g<3>.\g<4>'
+# Seconde expression régulière à appliquer sur le fichier
+fileregex2:
+  pattern_in:
+  pattern_out:
+# Troisième expression régulière à appliquer sur le fichier
+fileregex3:
+  pattern_in:
+  pattern_out:
+# Si true on calcule la priorité sinon on utilisera la valeur 85 par défaut
+sla:
+# Durée de rétention (en heure) des acquittements dans la « table » d’acquittements.
+delAck:
+# Valeur par defaut de priorité à appliquer à une diffusion
+delfaultpriority: 1
+# Element de nommage du fichier de diffusion vers Difmet
+diffFileName:
+# Date de fin de vie d’un fichier en minute par rapport à l’heure système
+fileendlive:
+# Temps en seconde d’attente avant le traitement des archives difmet à expédier
+sendFTPIdle: 10
+# Nombre de transferts FTP concurrentiels
+sendFTPlimitConn: 4
+#

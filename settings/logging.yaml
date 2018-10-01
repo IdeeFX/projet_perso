@@ -1,0 +1,144 @@
+version: 1
+disable_existing_loggers: False
+formatters:
+    simple:
+        format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# TODO surcharge de /tmp/ via logdir de settings
+handlers:
+    console:
+        class: logging.StreamHandler
+        level: DEBUG
+        formatter: simple
+        stream: ext://sys.stdout
+
+    info_file_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: INFO
+        formatter: simple
+        filename: /tmp/info.log  # TODO explain how the filenames are managed
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
+    error_file_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: ERROR
+        formatter: simple
+        filename: /tmp/errors.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
+    server_file_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: DEBUG
+        formatter: simple
+        filename: /tmp/server.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
+    manager_file_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: DEBUG
+        formatter: simple
+        filename: /tmp/manager.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
+    sender_file_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: DEBUG
+        formatter: simple
+        filename: /tmp/sender.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
+    ack_file_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: DEBUG
+        formatter: simple
+        filename: /tmp/ack.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
+    difmet_ack_message_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: DEBUG
+        formatter: simple
+        filename: /tmp/difmet_ack_messages.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
+    difmet_alarm_message_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: DEBUG
+        formatter: simple
+        filename: /tmp/difmet_alarm_messages.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
+    test_client_file_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: DEBUG
+        formatter: simple
+        filename: /tmp/test_client.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
+loggers:
+    test_client:
+        level: DEBUG
+        handlers: [test_client_file_handler]
+        propagate: no
+
+    server:
+        level: DEBUG
+        handlers: [server_file_handler, info_file_handler, error_file_handler]
+        propagate: no
+
+    file_manager.manager:
+        level: DEBUG
+        handlers: [manager_file_handler, info_file_handler, error_file_handler]
+        propagate: no
+
+    file_sender.sender:
+        level: DEBUG
+        handlers: [sender_file_handler, info_file_handler, error_file_handler]
+        propagate: no
+
+    ack_receiver.ack_receiver:
+        level: DEBUG
+        handlers: [ack_file_handler, info_file_handler, error_file_handler]
+        propagate: no
+
+    difmet_ack_messages:
+        level: DEBUG
+        handlers: [difmet_ack_message_handler]
+        propagate: no
+
+    difmet_alarm_messages:
+        level: DEBUG
+        handlers: [difmet_alarm_message_handler]
+        propagate: no
+
+    notification_receiver.receiver:
+        level: DEBUG
+        handlers: [server_file_handler, info_file_handler, error_file_handler]
+        propagate: no
+
+    webservice.server.soapInterface:
+        level: DEBUG
+        handlers: [server_file_handler, info_file_handler, error_file_handler]
+        propagate: no
+
+root:
+    level: INFO
+    handlers: [console, info_file_handler, error_file_handler]
