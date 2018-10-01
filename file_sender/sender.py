@@ -206,6 +206,7 @@ class DifmetSender:
             else:
                 LOGGER.info("File %s of size %f Mo sent to Diffmet in %f s",
                              file_, size, duration)
+            if upload_ok and not DEBUG:
                 os.remove(file_)
                 LOGGER.debug("File %s deleted", file_)
         except multiprocessing.TimeoutError:
@@ -248,8 +249,8 @@ if DEBUG and __name__ == '__main__':
                                          "Loop indefinitly if no value is "
                                          "provided"),
                                     type=int,
-                                    nargs=1)    
-                    
+                                    nargs=1)
+
     args = parser.parse_args()
     if args.loops:
         max_loops = args.loops[0]
