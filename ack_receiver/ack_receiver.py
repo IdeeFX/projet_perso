@@ -16,7 +16,7 @@ from settings.settings_manager import SettingsManager
 from webservice.server.application import APP
 
 
- 
+
 
 # initialize LOGGER
 setup_logging()
@@ -111,15 +111,14 @@ class AckReceiver:
         root = tree.getroot()
 
         for alarm in root.findall("alarm"):
-            req_id = alarm.findtext("diffusion_externalid")
+            diff_external_id = alarm.findtext("diffusion_externalid")
 
             keys = ["date",
                     "severity",
                     "error",
-                    "subscriber_name",
-                    "diffusion_externalid"]
+                    "subscriber_name"]
 
-            msg_list = ["diffusion_externalid = %s" % diffusion_externalid]
+            msg_list = ["diffusion_externalid = %s" % diff_external_id]
 
             for key in keys:
                 val = ack.findtext(key)
@@ -142,8 +141,8 @@ class AckReceiver:
         for ack in root.findall("acquittement"):
             #TODO que signifie "quand il est présent" ?
             # TODO check if it should be the fullrequestId or diff_externalid
-            diff_id = ack.findtext("diffusion_externalid")
-            dtb_key = dict(fullrequestId=diff_id)
+            diff_external_id = ack.findtext("diffusion_externalid")
+            dtb_key = dict(diff_externalid=diff_external_id)
             prod_id = ack.findtext("productid")
             req_id = Database.get_id_by_query(**dtb_key)
             status = ack.findtext("status")
@@ -185,7 +184,7 @@ class AckReceiver:
                 diff_success = False
             # Log the full ack
             msg_list = ["fullrequestId = %s" % req_id,
-                        "diffusion_externalid = %s" % diffusion_externalid,
+                        "diffusion_externalid = %s" % diff_external_id,
                         ]
             for key in keys:
                 val = ack.findtext(key)
@@ -224,8 +223,8 @@ if DEBUG and __name__ == '__main__':
                                          "Loop indefinitly if no value is "
                                          "provided"),
                                     type=int,
-                                    nargs=1)    
-                    
+                                    nargs=1)
+
     args = parser.parse_args()
     if args.loops:
         max_loops = args.loops[0]

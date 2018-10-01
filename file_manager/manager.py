@@ -671,7 +671,14 @@ class DiffMetManager:
                 etree.SubElement(element, prefix + "ftp_use_size").text = binBool(diff_info["checkFileSize"])
                 etree.SubElement(element, prefix + "ftp_passive").text = binBool(diff_info["passive"])
                 etree.SubElement(element, prefix + "ftp_port").text = self._get_port_value(diff_info)
-                etree.SubElement(element, prefix + "ftp_final_file_name").text = str(diff_info["fileName"])
+                etree.SubElement(element, prefix + "ftp_tmp_method").text = "NAME"
+                if diff_info["fileName"] != "":
+                    etree.SubElement(element, prefix + "ftp_final_file_name").text = str(diff_info["fileName"])
+                    etree.SubElement(element, prefix + "ftp_tmp_file_name").text = str(diff_info["fileName"]+ ".tmp")
+                else:
+                    etree.SubElement(element, prefix + "ftp_final_file_name").text = self.original_filename
+                    etree.SubElement(element, prefix + "ftp_tmp_file_name").text = self.original_filename + ".tmp"
+                # etree.SubElement(element, "switch_method_medias_ftp").text = "NTRY"
 
 
             elif diff_info["DiffusionType"] == "EMAIL":
@@ -682,7 +689,7 @@ class DiffMetManager:
                 etree.SubElement(element, prefix + "email_subject").text = str(diff_info["subject"])
                 etree.SubElement(element, prefix + "email_text_in_body").text = "0"
                 # etree.SubElement(element, prefix + "email_preamble").text = ""
-                if diff_info["fileName"] == "":
+                if diff_info["fileName"] != "":
                     etree.SubElement(element, prefix + "email_attached_file_name").text = str(diff_info["fileName"])
                 else:
                     etree.SubElement(element, prefix + "email_attached_file_name").text = DEFAULT_ATTACHMENT_NAME
@@ -715,10 +722,13 @@ class DiffMetManager:
 
             if "alternativeDiffusion" in instr.keys():
                 altdiff = instr["alternativeDiffusion"]
-                diffInfoToXml(diffusion,altdiff)
+                if altdiff["DiffusionType"] == "FTP":
+                    prefix = "standby_ftp_"
+                else:
+                    prefix = "standby_email_"
+                diffInfoToXml(diffusion,altdiff, prefix=prefix)
                 etree.SubElement(diffusion,"standby_media").text = altdiff["DiffusionType"]
 
-            etree.SubElement(diffusion,"switch_method_medias_ftp").text = "NTRY"
             etree.SubElement(diffusion,"standby_switch_try_number").text = "3"
 
         etree.SubElement(product, "diffusionnumber").text=str(len(self.id_list))
@@ -740,8 +750,8 @@ if DEBUG and __name__ == '__main__':
                                          "Loop indefinitly if no value is "
                                          "provided"),
                                     type=int,
-                                    nargs=1)    
-                    
+                                    nargs=1)
+
     args = parser.parse_args()
     if args.loops:
         max_loops = args.loops[0]

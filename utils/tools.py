@@ -15,7 +15,8 @@ class Tools:
         rand = random.SystemRandom()
         char = string.ascii_letters + string.digits
         res = rand.choice(char)
-        res += ''.join(rand.choice(char + "_,+\\.-") for _ in range(length-1))
+        # res += ''.join(rand.choice(char + "_,+\\.-") for _ in range(length-1))
+        res += ''.join(rand.choice(char) for _ in range(length-1))
 
         return res
 

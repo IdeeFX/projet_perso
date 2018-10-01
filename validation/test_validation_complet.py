@@ -12,6 +12,7 @@ from validation.mock_server.soap_server import SoapServer
 from validation.mock_server.difmet_ftp import FTPserver
 from file_manager.manager import FileManager
 from file_sender.sender import DifmetSender
+from ack_receiver.ack_receiver import AckReceiver
 from settings.settings_manager import SettingsManager, DebugSettingsManager
 from utils.setup_tree import HarnessTree
 from multiprocessing import Pool
@@ -112,4 +113,32 @@ with TemporaryDirectory(prefix="diffmet_") as deposit:
     except KeyboardInterrupt:
         FTPserver.stop_server()
 
-    print("fin")
+
+with TemporaryDirectory(prefix="ack_") as ack_depost:
+
+    with open(join(ack_depost, "ack_file.acqdifmet.xml"),"w") as file_:
+        file_.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
+                    "<acquittements>\n"
+                    "  <acquittement>\n"
+                    "    <date>2018-10-01T09:02:33Z</date>\n"
+                    "    <type>RECEIVED</type>\n"
+                    "    <status>EMPTY</status>\n"
+                    "    <productid>fr-met,SNFR30LFPW010700LFPW,00001-wiss,20181001070000</productid>\n"
+                    "    <product_internalid>47614_20181001090233</product_internalid>\n"
+                    "  </acquittement>\n"
+                    "  <acquittementnumber>1</acquittementnumber>\n"
+                    "</acquittements>\n")
+    SettingsManager.update(dict(harnaisAckDir=ack_depost),
+                            testing=True)
+    HarnessTree.setter("dir_ack", ack_depost, testing=True)
+    thr = Thread(target=AckReceiver.process, kwargs={"max_loops":2})
+
+
+    thr.start()
+    thr.join(80)
+    # stopping file manager
+    AckReceiver.stop()
+    print("Ack_receiver success")
+
+
+print("fin")
