@@ -674,7 +674,7 @@ class DiffMetManager:
                 if diff_info["fileName"] != "":
                     etree.SubElement(element, prefix + "ftp_final_file_name").text = str(diff_info["fileName"])
                 else:
-                    etree.SubElement(element, prefix + "ftp_final_file_name").text = self.new_filename
+                    etree.SubElement(element, prefix + "ftp_final_file_name").text = self.original_filename
                 etree.SubElement(element, "switch_method_medias_ftp").text = "NTRY"
 
 
