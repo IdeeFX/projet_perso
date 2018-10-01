@@ -673,8 +673,10 @@ class DiffMetManager:
                 etree.SubElement(element, prefix + "ftp_port").text = self._get_port_value(diff_info)
                 if diff_info["fileName"] != "":
                     etree.SubElement(element, prefix + "ftp_final_file_name").text = str(diff_info["fileName"])
+                    etree.SubElement(element, prefix + "ftp_tmp_file_name").text = str(diff_info["fileName"]+ ".tmp")
                 else:
                     etree.SubElement(element, prefix + "ftp_final_file_name").text = self.original_filename
+                    etree.SubElement(element, prefix + "ftp_tmp_file_name").text = self.original_filename + ".tmp"
                 etree.SubElement(element, "switch_method_medias_ftp").text = "NTRY"
 
 
