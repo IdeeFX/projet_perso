@@ -2,6 +2,7 @@ import random
 import hashlib
 import string
 import os
+import shutil
 import signal
 from subprocess import check_output, CalledProcessError
 from utils.const import RANDOM_ID_LENGTH
@@ -49,6 +50,23 @@ class Tools:
         for pid in pid_to_kill:
             os.kill(pid, signal.SIGTERM)
         return pid_to_kill
+
+    @staticmethod
+    def remove_file(file_path, file_tag, logger):
+        rep = os.environ.get("MFSERV_HARNESS_TRASH")
+        try:
+            is_dir = os.path.isdir(rep)
+        except TypeError:
+            logger.error("Value of environment variable MFSERV_HARNESS_TRASH"
+                         "is not a path to a directory.")
+            is_dir = False
+
+        if is_dir:
+            shutil.move(file_path, rep)
+            logger.debug("%s file %s moved to %s", file_tag, file_path, rep)
+        else:
+            logger.debug("Deleting %s file %s.", file_tag, file_path)
+            os.remove(file_path)
 
 
 class Incrementator:

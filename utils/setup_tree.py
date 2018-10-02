@@ -75,16 +75,13 @@ class HarnessTree:
             join(harnais_dir,
                  REPERTORY_TREE.temp_dissrequest_d)
                                                                 )
-        if DEBUG:
-            cls._repertories["dir_ack"] = setup_repertory(
-                join(harnais_dir,"ack_dir")
-                                                                )
-        else:                                                                            
-            cls._repertories["dir_ack"] = SettingsManager.get("harnaisAckDir")
-        
+
+        cls._repertories["dir_ack"] = dir_ack = SettingsManager.get("harnaisAckDir")
+
         if not os.path.isdir(cls._repertories["dir_ack"]):
             LOGGER.error("Ack repertory %s does "
-                             "not exist",rep=dir_path)
+                         "not exist", dir_ack)
+            # TODO raise
 
         # storing the settings file signature
         cls._checksum = SettingsManager.get_checksum()

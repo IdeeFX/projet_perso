@@ -11,6 +11,7 @@ from setproctitle import setproctitle
 from utils.setup_tree import HarnessTree
 from utils.const import REQ_STATUS
 from utils.log_setup import setup_logging
+from utils.tools import Tools
 from utils.database import Database, Diffusion
 from settings.settings_manager import SettingsManager
 from webservice.server.application import APP
@@ -21,11 +22,12 @@ from webservice.server.application import APP
 # initialize LOGGER
 setup_logging()
 LOGGER = logging.getLogger(__name__)
-LOGGER_ACK = logging.getLogger("difmet_ack_message_handler")
-LOGGER_ALARM =   logging.getLogger("difmet_alarm_message_handler")
+LOGGER_ACK = logging.getLogger("difmet_ack_messages")
+LOGGER_ALARM =   logging.getLogger("difmet_alarm_message")
 LOGGER.debug("Logging configuration set up in %s", __name__)
 
 LOGGER.info("Ack Receiver setup complete")
+# TODO move environment variables into utils.const
 try:
     DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
 except ValueError:
@@ -73,8 +75,11 @@ class AckReceiver:
                 diss_success, req_id = cls.get_id(file_path)
                 if req_id is not None:
                     cls.update_database(req_id)
-                LOGGER.debug("Deleting difmet ack file %s.", file_path)
-                os.remove(file_path)
+
+                Tools.remove_file(file_path, "difmet ack", LOGGER)
+
+
+
 
             for file_ in listdir(dir_ack):
                 file_path = join(dir_ack, file_)
@@ -85,9 +90,7 @@ class AckReceiver:
                 alarm_msg, req_id = cls.get_alarm(file_path)
                 if req_id is not None:
                     cls.update_database_status(alarm_msg)
-                LOGGER.debug("Deleting difmet alarm file %s.", file_path)
-                os.remove(file_path)
-
+                Tools.remove_file(file_path, "difmet alarm", LOGGER)
             if counter == max_loops:
                 LOGGER.info("Performed required %i loops, exiting.", counter)
                 cls.stop()
@@ -147,8 +150,6 @@ class AckReceiver:
             req_id = Database.get_id_by_query(**dtb_key)
             status = ack.findtext("status")
             ack_type = ack.findtext("type")
-            prod_internalid = ack.findtext("product_internalid")
-            diff_internalid = ack.findtext("diff_internalid")
             # channel =
 
             keys = ["type",
@@ -172,16 +173,8 @@ class AckReceiver:
                             req_id)
                 diff_success = True
             else:
-                Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
-                                           **dtb_key)
-                LOGGER.error("DiffMet ack reports error for product %s "
-                            "corresponding to request %s with status %s "
-                            "for request of type %s.",
-                            prod_id,
-                            req_id,
-                            ack_type,
-                            status)
-                diff_success = False
+                ack_type_failure = ack_type
+                status_failure = status
             # Log the full ack
             msg_list = ["fullrequestId = %s" % req_id,
                         "diffusion_externalid = %s" % diff_external_id,
@@ -190,8 +183,20 @@ class AckReceiver:
                 val = ack.findtext(key)
                 msg_list.append('{k} : {v}'.format(k=key,v=val))
 
-            ack_msg = msg_list[0] + "\n".join(msg_list)
-            LOGGER_ACK.debug("Ack message is : \n %s", ack_msg)
+            # ack_msg = msg_list[0] + "\n".join(msg_list[1:])
+            ack_msg = "\n".join(msg_list)
+            LOGGER_ACK.debug("Ack message is : \n%s", ack_msg)
+
+        if not diff_success:
+            Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
+                                        **dtb_key)
+            LOGGER.error("DiffMet ack reports error for product %s "
+                        "corresponding to request %s with status %s "
+                        "for request of type %s.",
+                        prod_id,
+                        req_id,
+                        ack_type_failure,
+                        status_failure)
 
 
         return diff_success, req_id

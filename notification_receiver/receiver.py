@@ -159,8 +159,7 @@ class Notification():
                     REQ_STATUS.failed)
 
         if os.path.isfile(self.request_file):
-            os.remove(self.request_file)
-        LOGGER.debug("Removed JSON request file %s", self.request_file)
+            Tools.remove_file(self.request_file, "JSON request", LOGGER)
 
         return REQ_STATUS.failed
 
