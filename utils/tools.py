@@ -68,6 +68,20 @@ class Tools:
             logger.debug("Deleting %s file %s.", file_tag, file_path)
             os.remove(file_path)
 
+    @staticmethod
+    def clear_trash_can():
+        rep = os.environ.get("MFSERV_HARNESS_TRASH")
+        try:
+            is_dir = os.path.isdir(rep)
+        except TypeError:
+            logger.error("Value of environment variable MFSERV_HARNESS_TRASH"
+                         "is not a path to a directory.")
+            is_dir = False
+
+        if is_dir:
+            for file_ in os.listdir(rep):
+                os.remove(os.path.join(rep, file_))
+
 
 class Incrementator:
     idx = 0
