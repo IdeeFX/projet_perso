@@ -6,10 +6,10 @@ from distutils.util import strtobool
 from tempfile import gettempdir
 from settings.settings_manager import SettingsManager
 from flask_sqlalchemy import SQLAlchemy
-from utils.const import REQ_STATUS, RANDOM_ID_LENGTH, REFRESH_DATABASE_LIMIT
+from utils.const import REQ_STATUS, RANDOM_ID_LENGTH, ENV
 
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 LOGGER = logging.getLogger(__name__)
@@ -50,9 +50,10 @@ class Database():
             DTB.create_all()
 
         # check if a refresh is necessary
-        limit = timedelta(**REFRESH_DATABASE_LIMIT)
+        limit_format = dict(seconds=SettingsManager.get("delAck")*3600)
+        limit = timedelta(**limit_format)
         if cls._last_refresh is None or (datetime.now() - cls._last_refresh) > limit:
-            cls.refresh(**REFRESH_DATABASE_LIMIT)
+            cls.refresh(**limit_format)
 
     @classmethod
     def get_database(cls):
@@ -80,9 +81,10 @@ class Database():
         # TODO refresh is only performed for this query. Look into making
         # it a decorator
         # check if a refresh is necessary
-        limit = timedelta(**REFRESH_DATABASE_LIMIT)
+        limit_format = dict(seconds=SettingsManager.get("delAck")*3600)
+        limit = timedelta(**limit_format)
         if cls._last_refresh is None or (datetime.now() - cls._last_refresh) > limit:
-            cls.refresh(**REFRESH_DATABASE_LIMIT)
+            cls.refresh(**limit_format)
 
 
         # records = session.query(Diffusion).filter(Diffusion.fullrequestId = req_id + hostname).all()
@@ -176,9 +178,7 @@ class Database():
                              kwargs)
 
             if len(records) !=0:
-                msg_dict = dict(days=0,seconds=0)
-                msg_dict.update(kwargs)
-                msg = "{days} days {seconds} seconds".format(**msg_dict)
+                msg = "{seconds} seconds".format(**kwargs)
                 cls._dtb.session.commit()
                 LOGGER.info("Deleted %i records aged over %s",
                             len(records),
