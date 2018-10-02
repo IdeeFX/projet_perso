@@ -122,7 +122,7 @@ class AckReceiver:
             msg_list = ["diffusion_externalid = %s" % diff_external_id]
 
             for key in keys:
-                val = ack.findtext(key)
+                val = alarm.findtext(key)
                 msg_list.append('{k} : {v}'.format(k=key,v=val))
 
             alarm_msg = msg_list[0] + "\n".join(msg_list)

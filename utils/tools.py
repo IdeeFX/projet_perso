@@ -57,8 +57,9 @@ class Tools:
         try:
             is_dir = os.path.isdir(rep)
         except TypeError:
-            logger.error("Value of environment variable MFSERV_HARNESS_TRASH"
-                         "is not a path to a directory.")
+            if rep is not None:
+                logger.error("Value of environment variable MFSERV_HARNESS_TRASH "
+                            "is not a path to a directory.")
             is_dir = False
 
         if is_dir:
@@ -74,8 +75,9 @@ class Tools:
         try:
             is_dir = os.path.isdir(rep)
         except TypeError:
-            logger.error("Value of environment variable MFSERV_HARNESS_TRASH"
-                         "is not a path to a directory.")
+            if rep is not None:
+                logger.error("Value of environment variable MFSERV_HARNESS_TRASH "
+                            "is not a path to a directory.")
             is_dir = False
 
         if is_dir:
