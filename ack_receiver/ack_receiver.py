@@ -23,7 +23,7 @@ from webservice.server.application import APP
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 LOGGER_ACK = logging.getLogger("difmet_ack_messages")
-LOGGER_ALARM =   logging.getLogger("difmet_alarm_message")
+LOGGER_ALARM =   logging.getLogger("difmet_alarm_messages")
 LOGGER.debug("Logging configuration set up in %s", __name__)
 
 LOGGER.info("Ack Receiver setup complete")
@@ -117,6 +117,7 @@ class AckReceiver:
             keys = ["date",
                     "severity",
                     "error",
+                    "error_text"
                     "subscriber_name"]
 
             msg_list = ["diffusion_externalid = %s" % diff_external_id]
@@ -128,7 +129,9 @@ class AckReceiver:
             alarm_msg = msg_list[0] + "\n".join(msg_list)
             LOGGER_ALARM.debug("Alarm message is : \n %s", alarm_msg)
 
-        LOGGER.info("Logged ")
+        for handler in LOGGER_ALARM.handlers
+            LOGGER.info("Logged an alarm message into "
+                        "log file %s", handler.baseFilename)
 
         return alarm_msg, req_id
 
@@ -195,6 +198,10 @@ class AckReceiver:
                    status_failure))
             LOGGER.error(msg)
             cls.update_database_message(msg, req_id)
+
+        for handler in LOGGER_ACK.handlers
+            LOGGER.info("Logged an ack message into "
+                        "log file %s", handler.baseFilename)
 
 
         return diff_success, req_id
