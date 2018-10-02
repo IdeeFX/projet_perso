@@ -127,7 +127,7 @@ class AckReceiver:
             alarm_msg = msg_list[0] + "\n".join(msg_list)
             LOGGER_ALARM.debug("Alarm message is : \n %s", alarm_msg)
 
-        for handler in LOGGER_ALARM.handlers
+        for handler in LOGGER_ALARM.handlers:
             LOGGER.info("Logged an alarm message into "
                         "log file %s", handler.baseFilename)
 
@@ -198,7 +198,7 @@ class AckReceiver:
             LOGGER.error(msg)
             cls.update_database_message(msg, req_id)
 
-        for handler in LOGGER_ACK.handlers
+        for handler in LOGGER_ACK.handlers:
             LOGGER.info("Logged an ack message into "
                         "log file %s", handler.baseFilename)
 
