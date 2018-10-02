@@ -410,7 +410,7 @@ class ConnectionPointer:
             else:
                 # TODO fix multiprocessing
                 # pool = multiprocessing.Pool(processes=SCP_PARAMETERS.workers)
-                DebugSettingsManager.sftp_pool(processes=SCP_PARAMETERS.workers)
+                pool = DebugSettingsManager.sftp_pool(processes=SCP_PARAMETERS.workers)
             # add job to pool
             # TODO clean up
             # scp_files = partial(self._scp_file, **connection_info)
