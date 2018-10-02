@@ -72,12 +72,8 @@ class AckReceiver:
                 if ack_file is None:
                     continue
                 LOGGER.debug("Processing difmet ack file %s.", file_)
-                diss_success, req_id = cls.get_id(file_path)
-
+                diss_success, req_id = cls.get_ack(file_path)
                 Tools.remove_file(file_path, "difmet ack", LOGGER)
-
-
-
 
             for file_ in listdir(dir_ack):
                 file_path = join(dir_ack, file_)
@@ -89,6 +85,7 @@ class AckReceiver:
                 if req_id is not None:
                     cls.update_database_status(alarm_msg)
                 Tools.remove_file(file_path, "difmet alarm", LOGGER)
+
             if counter == max_loops:
                 LOGGER.info("Performed required %i loops, exiting.", counter)
                 cls.stop()
@@ -107,6 +104,7 @@ class AckReceiver:
 
     @classmethod
     def get_alarm(cls, file_):
+        req_id = None
 
         tree = etree.parse(file_)
         root = tree.getroot()
@@ -137,10 +135,11 @@ class AckReceiver:
 
 
     @classmethod
-    def get_id(cls, file_):
+    def get_ack(cls, file_):
         diff_success = False
         tree = etree.parse(file_)
         root = tree.getroot()
+        req_id = None
 
         for ack in root.findall("acquittement"):
             #TODO que signifie "quand il est présent" ?
@@ -203,6 +202,9 @@ class AckReceiver:
             LOGGER.info("Logged an ack message into "
                         "log file %s", handler.baseFilename)
 
+        if diff_success and req_id is None:
+            LOGGER.error("Couldn't retrieve dissemination requestId "
+                         "from external_id %s", diff_external_id)
 
         return diff_success, req_id
 
