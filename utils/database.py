@@ -183,7 +183,7 @@ class Database():
                 LOGGER.info("Deleted %i records aged over %s",
                             len(records),
                             msg)
-        _last_refresh = datetime.now()
+        cls._last_refresh = datetime.now()
 
 
 
