@@ -42,7 +42,16 @@ class AckReceiver:
     @classmethod
     def process(cls, max_loops=0):
         if not DEBUG:
-            setproctitle("harness_ack_receiver")
+            process_name = "harness_ack_receiver"
+            # TODO implement when multiprocessing gets reactivated
+            # pid_killed = Tools.kill_process(process_name)
+            # if pid_killed != []:
+            #     LOGGER.warning("Found a process %s already "
+            #                    "running with pid %i. Attempting"
+            #                    " to kill it.", process_name, pid)
+            # for pid in pid_killed:
+            #     LOGGER.info("Killed process %s with pid %i", process_name,pid)
+            setproctitle(process_name)
         counter = 0
         if not cls._running:
             LOGGER.info("Ack receiver is starting")
