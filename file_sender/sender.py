@@ -13,7 +13,7 @@ from setproctitle import setproctitle
 from ftplib import FTP, error_perm
 from utils.setup_tree import HarnessTree
 from utils.log_setup import setup_logging
-from utils.const import SCP_PARAMETERS
+from utils.const import SCP_PARAMETERS, ENV
 from utils.tools import Tools
 from settings.settings_manager import SettingsManager, DebugSettingsManager
 from webservice.server.application import APP
@@ -26,7 +26,7 @@ LOGGER.debug("Logging configuration set up in %s", __name__)
 LOGGER.info("Sender setup complete")
 
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 

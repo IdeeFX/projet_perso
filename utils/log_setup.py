@@ -12,7 +12,7 @@ SETUP_DIR = os.path.dirname(__file__)
 DEFAULT_PATH = os.environ.get(ENV.log_settings) or join(SETUP_DIR, '../settings/logging.yaml')
 
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 

@@ -14,14 +14,13 @@ from ack_receiver.ack_receiver import AckReceiver
 from utils.log_setup import setup_logging
 from settings.settings_manager import SettingsManager
 from utils.tools import Tools
+from utils.const import ENV
 
-# set to True for internal testing outside of production by
-# using MFSERV_HARNESS_DEBUG
-# It switches the launcher from a process based multiprocessing to
+# debug switches the launcher from a process based multiprocessing to
 # a thread implementation to follow more easily the overall process
 # in a debugger.
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 

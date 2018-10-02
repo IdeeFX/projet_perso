@@ -52,7 +52,7 @@ class SettingsManager:
                        fileRegex2=None,
                        fileRegex3=None,
                        sla=None,
-                       delAck=None,
+                       delAck=DEFAULT_SETTINGS.delAck,
                        delfaultPriority=None,
                        diffFileName=DEFAULT_SETTINGS.diffFileName,
                        fileEndLive=DEFAULT_SETTINGS.fileEndLive,
