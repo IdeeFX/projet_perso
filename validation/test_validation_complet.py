@@ -21,7 +21,7 @@ from utils.const import PORT
 from utils.tools import Tools
 from utils.database import Database
 
-
+Tools.clear_trash_can()
 Database.initialize_database(APP)
 Database.refresh(**{})
 #clear files
@@ -35,7 +35,6 @@ def clear_dir(dir_):
 
 for dir_ in [dir_A,dir_B,dir_C]:
     clear_dir(dir_)
-
 
 SoapServer.create_server()
 
@@ -55,10 +54,11 @@ testDiffusion = factory.MailDiffusion(address="dummy@dummy.com",
 info = factory.DisseminationInfo(priority=5,SLA=6,dataPolicy="dummyDataPolicy", diffusion=testDiffusion)
 with TemporaryDirectory(prefix="harnais_") as stagingpost:
     print(stagingpost)
-    result = client.service.disseminate(requestId="123456", fileURI=stagingpost, disseminationInfo=info)
-    result = client.service.disseminate(requestId="654321", fileURI=stagingpost, disseminationInfo=info)
+    result1 = client.service.disseminate(requestId="123456", fileURI=stagingpost, disseminationInfo=info)
+    result2 = client.service.disseminate(requestId="654321", fileURI=stagingpost, disseminationInfo=info)
     # result = client.service.disseminate(requestId="654321", fileURI=stagingpost, disseminationInfo=info)
-    # print(result)
+    print(result1)
+    print(result2)
 
     SoapServer.stop_server()
 
@@ -72,7 +72,6 @@ with TemporaryDirectory(prefix="harnais_") as stagingpost:
                                 openwisSftpPort = 3373
                                 ),
                             testing=True)
-    DebugSettingsManager.sftp_pool = ThreadPool
     # DebugSettingsManager.sftp_pool = Pool
     thr = Thread(target=FileManager.process, kwargs={"max_loops":1})
     thr.start()
@@ -112,21 +111,48 @@ with TemporaryDirectory(prefix="diffmet_") as deposit:
     except KeyboardInterrupt:
         FTPserver.stop_server()
 
+req_id1 = "123456" + hostname
+req_id2 = "654321" + hostname
+ext_id1=Database.get_external_id("123456" + hostname)
+ext_id2=Database.get_external_id("654321" + hostname)
 
 with TemporaryDirectory(prefix="ack_") as ack_deposit:
 
     with open(join(ack_deposit, "ack_file.acqdifmet.xml"),"w") as file_:
         file_.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
                     "<acquittements>\n"
-                    "  <acquittement>\n"
-                    "    <date>2018-10-01T09:02:33Z</date>\n"
-                    "    <type>RECEIVED</type>\n"
-                    "    <status>EMPTY</status>\n"
-                    "    <productid>fr-met,SNFR30LFPW010700LFPW,00001-wiss,20181001070000</productid>\n"
-                    "    <product_internalid>47614_20181001090233</product_internalid>\n"
-                    "  </acquittement>\n"
-                    "  <acquittementnumber>1</acquittementnumber>\n"
-                    "</acquittements>\n")
+                      "<acquittement>\n"
+                        "<date>2018-10-01T12:31:46Z</date>\n"
+                        "<type>RECEIVED</type>\n"
+                        "<status>OK</status>\n"
+                        "<productid>fr-met,SNFR30LFPW011000LFPW,00001-wiss,20181001100000</productid>\n"
+                        "<product_internalid>66180_20181001123146</product_internalid>\n"
+                        "<send2>0</send2>\n"
+                        "<diffusion_externalid>{ext_id1}</diffusion_externalid>\n"
+                        "<diffusion_internalid>66181_20181001123146</diffusion_internalid>\n"
+                        "<channel>EMAIL</channel>\n"
+                        "<media>EMAIL</media>\n"
+                        "<use_standby>0</use_standby>\n"
+                        "<email_adress>yves.goupil@meteo.fr</email_adress>\n"
+                      "</acquittement>\n"
+                      "<acquittement>\n"
+                        "<date>2018-10-01T12:31:46Z</date>\n"
+                        "<type>SEND</type>\n"
+                        "<status>OK</status>\n"
+                        "<productid>fr-met,SNFR30LFPW011000LFPW,00001-wiss,20181001100000</productid>\n"
+                        "<product_internalid>66180_20181001123146</product_internalid>\n"
+                        "<send2>0</send2>\n"
+                        "<diffusion_externalid>{ext_id1}</diffusion_externalid>\n"
+                        "<diffusion_internalid>66181_20181001123146</diffusion_internalid>\n"
+                        "<channel>EMAIL</channel>\n"
+                        "<media>EMAIL</media>\n"
+                        "<use_standby>0</use_standby>\n"
+                        "<try_number>1</try_number>\n"
+                        "<email_adress>yves.goupil@meteo.fr</email_adress>\n"
+                        "<comment>nom de fichier en attachement au courriel: machin</comment>\n"
+                      "</acquittement>\n"
+                      "<acquittementnumber>2</acquittementnumber>\n"
+                    "</acquittements>".format(ext_id1=ext_id1))
     SettingsManager.update(dict(harnaisAckDir=ack_deposit),
                             testing=True)
     # HarnessTree.setter("dir_ack", ack_deposit, testing=True)
@@ -139,5 +165,16 @@ with TemporaryDirectory(prefix="ack_") as ack_deposit:
     AckReceiver.stop()
     print("Ack_receiver success")
 
+# check acquittement
+SoapServer.create_server()
+client = Client('http://{hostname}:{port}/harnais-diss-v2/'
+                'webservice/Dissemination?wsdl'.format(hostname=hostname,
+                                                       port=port))
+factory = client.type_factory('http://dissemination.harness.openwis.org/')
+result = client.service.monitorDissemination(requestId=req_id1)
+print(result)
+result = client.service.monitorDissemination(requestId=req_id2)
+print(result)
+SoapServer.stop_server()
 
 print("fin")
