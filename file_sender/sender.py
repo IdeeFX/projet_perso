@@ -14,6 +14,7 @@ from ftplib import FTP, error_perm
 from utils.setup_tree import HarnessTree
 from utils.log_setup import setup_logging
 from utils.const import SCP_PARAMETERS
+from utils.tools import Tools
 from settings.settings_manager import SettingsManager, DebugSettingsManager
 from webservice.server.application import APP
 
@@ -206,8 +207,7 @@ class DifmetSender:
             else:
                 LOGGER.info("File %s of size %f Mo sent to Diffmet in %f s",
                              file_, size, duration)
-                os.remove(file_)
-                LOGGER.debug("File %s deleted", file_)
+                Tools.remove_file(file_, "difmet archive", LOGGER)
         except multiprocessing.TimeoutError:
             LOGGER.error("Timeout of %f s exceeded for sending file %s"
                          " on staging post.", file_, timeout)

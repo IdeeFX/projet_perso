@@ -121,8 +121,7 @@ class FileManager:
 
                 # no reference
                 if requestId_list == []:
-                    os.remove(file_path)
-                    LOGGER.debug("Deleting orphan file %s", file_path)
+                    Tools.remove_file(file_path, "orphan file", LOGGER)
                     continue
 
                 # purge requestId_list or req_id that are not in
@@ -147,9 +146,7 @@ class FileManager:
             # cleaning instruction files
             for file_ in instruction_files:
                 try:
-                    os.remove(file_)
-                    LOGGER.debug("Instruction file %s deleted",
-                                 file_)
+                    Tools.remove_file(file_, "instruction", LOGGER)
                 # file either was moved back to repertory A or deleted
                 except FileNotFoundError:
                     pass
@@ -158,9 +155,7 @@ class FileManager:
             for file_ in os.listdir(dir_b):
                 file_path = os.path.join(dir_b, file_)
                 try:
-                    os.remove(file_)
-                    LOGGER.debug("Orphan file %s deleted",
-                                    file_path)
+                    Tools.remove_file(file_, "orphan", LOGGER)
                 except FileNotFoundError:
                     pass
             if counter == max_loops:
@@ -246,7 +241,7 @@ class FileManager:
                 # check if database status is at failed. If yes, instruction file is deleted.
                 # if not, it sent back to A repertory to be processed again
                 if Database.get_request_status(full_id) == REQ_STATUS.failed:
-                    os.remove(file_to_process)
+                    Tools.remove_file(file_to_process, "instruction", LOGGER)
                 else:
                     shutil.move(file_to_process, cls.dir_a)
 
@@ -588,10 +583,9 @@ class DiffMetManager:
             LOGGER.debug("Compressed dissemination file %s in %s.",
                         self.new_file_path, archive_path)
 
-        LOGGER.debug("Removing processed instruction file %s", instr_file_path)
-        os.remove(instr_file_path)
-        LOGGER.debug("Removing processed data file %s", self.new_file_path)
-        os.remove(self.new_file_path)
+
+        Tools.remove_file(instr_file_path, "processed instruction", LOGGER)
+        Tools.remove_file(self.new_file_path, "processed data", LOGGER)
         with Database.get_app().app_context():
             records = Diffusion.query.filter_by(final_file=self.new_filename).all()
         self.update_database(records, "rxnotif", False)
