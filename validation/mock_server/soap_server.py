@@ -2,6 +2,7 @@ from webservice.server import application
 import subprocess
 from time import sleep
 from utils.tools import Tools
+import os
 
 
 class SoapServer:
@@ -13,8 +14,12 @@ class SoapServer:
         if cls._process is None:
             #check if no other server is running. if so, kill them
             Tools.kill_process("harness_soap_server")
-            args =["python3", "-m", "webservice.server.application"]
-            cls._process= subprocess.Popen(args)
+            # args =["python3", "-m", "webservice.server.application"]
+
+            args =["python3", application.__file__]
+            my_env = os.environ.copy()
+            my_env["PYTHONPATH"] = os.environ["PYTHONPATH"] + ":/home/mdsi/davannefx/dev/harnais-diss-v2"
+            cls._process = subprocess.Popen(args, env=my_env)
             sleep(3)
             print("Soap server started")
 
@@ -24,6 +29,7 @@ class SoapServer:
             cls._process.terminate()
             sleep(1)
             print("Soap server stopped")
+            cls._process = None
 
     @classmethod
     def wait(cls, t=300):

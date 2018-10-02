@@ -73,8 +73,6 @@ class AckReceiver:
                     continue
                 LOGGER.debug("Processing difmet ack file %s.", file_)
                 diss_success, req_id = cls.get_id(file_path)
-                if req_id is not None:
-                    cls.update_database(req_id)
 
                 Tools.remove_file(file_path, "difmet ack", LOGGER)
 
@@ -165,12 +163,13 @@ class AckReceiver:
                     "email_adress"]
 
             if ack_type == "SEND" and status == "OK":
-                Database.update_field_by_query("requestStatus", REQ_STATUS.succeeded,
-                                           **dtb_key)
-                LOGGER.info("DiffMet ack reports success for product %s "
-                            "corresponding to request %s",
-                            prod_id,
-                            req_id)
+                cls.update_database_status(diff_success, req_id)
+                msg = ("DiffMet ack reports success for product %s "
+                       "corresponding to request %s" %
+                       (prod_id,
+                       req_id))
+                LOGGER.info(msg)
+                cls.update_database_message(msg, req_id)
                 diff_success = True
             else:
                 ack_type_failure = ack_type
@@ -182,21 +181,20 @@ class AckReceiver:
             for key in keys:
                 val = ack.findtext(key)
                 msg_list.append('{k} : {v}'.format(k=key,v=val))
-
-            # ack_msg = msg_list[0] + "\n".join(msg_list[1:])
             ack_msg = "\n".join(msg_list)
             LOGGER_ACK.debug("Ack message is : \n%s", ack_msg)
 
         if not diff_success:
-            Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
-                                        **dtb_key)
-            LOGGER.error("DiffMet ack reports error for product %s "
-                        "corresponding to request %s with status %s "
-                        "for request of type %s.",
-                        prod_id,
-                        req_id,
-                        ack_type_failure,
-                        status_failure)
+            cls.update_database_status(diff_success, req_id)
+            msg = ("DiffMet ack reports error for product %s "
+                   "corresponding to request %s with status %s "
+                   "for request of type %s." %
+                   (prod_id,
+                   req_id,
+                   ack_type_failure,
+                   status_failure))
+            LOGGER.error(msg)
+            cls.update_database_message(msg, req_id)
 
 
         return diff_success, req_id
