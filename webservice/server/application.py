@@ -11,7 +11,7 @@ from utils.log_setup import setup_logging
 from utils.database import Database
 from utils.setup_tree import HarnessTree
 from settings.settings_manager import SettingsManager
-from utils.const import PORT
+from utils.const import PORT, ENV
 
 
 # TODO allow to pass into arguments a custom settings file
@@ -40,7 +40,7 @@ def main():
     setproctitle("harness_soap_server")
 
     hostname = socket.gethostname()
-    port = os.environ.get("MFSERV_NGINX_PORT") or PORT
+    port = os.environ.get(ENV.port) or PORT
     LOGGER.warning("Starting application through Flask development server."
                    " This is NOT a production environment.")
     LOGGER.info("Launching Flask development server "

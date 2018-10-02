@@ -61,3 +61,17 @@ REFRESH_DATABASE_LIMIT = dict(days=5)
 DEFAULT_ATTACHMENT_NAME = "meteo_france_product"
 
 MAX_REGEX = 20
+
+env = namedtuple("ENV", ["debug",
+                         "settings",
+                         "log_settings",
+                         "trash",
+                         "port",
+                         "soap_url"])
+
+ENV = env(debug = "MFSERV_HARNESS_DEBUG",
+          settings = "MFSERV_HARNESS_SETTINGS",
+          log_settings = "MFSERV_HARNESS_LOG_SETTINGS",
+          trash = "MFSERV_HARNESS_TRASH",
+          port = "MFSERV_NGINX_PORT",
+          soap_url = "MFSERV_HARNESS_SOAP_ADRESS")

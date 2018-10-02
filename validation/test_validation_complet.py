@@ -17,7 +17,7 @@ from utils.setup_tree import HarnessTree
 from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThreadPool
 from webservice.server.application import APP
-from utils.const import PORT
+from utils.const import PORT, ENV
 from utils.tools import Tools
 from utils.database import Database
 
@@ -39,7 +39,7 @@ for dir_ in [dir_A,dir_B,dir_C]:
 SoapServer.create_server()
 
 hostname = socket.gethostname()
-port = os.environ.get("MFSERV_NGINX_PORT") or PORT
+port = os.environ.get(ENV.port) or PORT
 client = Client('http://{hostname}:{port}/harnais-diss-v2/'
                 'webservice/Dissemination?wsdl'.format(hostname=hostname,
                                                        port=port))

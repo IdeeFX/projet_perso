@@ -51,7 +51,7 @@ class Database():
 
         # check if a refresh is necessary
         limit = timedelta(**REFRESH_DATABASE_LIMIT)
-        if cls._last_refresh is None or (datetime.now() - last_refresh) > limit:
+        if cls._last_refresh is None or (datetime.now() - cls._last_refresh) > limit:
             cls.refresh(**REFRESH_DATABASE_LIMIT)
 
     @classmethod
@@ -81,7 +81,7 @@ class Database():
         # it a decorator
         # check if a refresh is necessary
         limit = timedelta(**REFRESH_DATABASE_LIMIT)
-        if cls._last_refresh is None or (datetime.now() - last_refresh) > limit:
+        if cls._last_refresh is None or (datetime.now() - cls._last_refresh) > limit:
             cls.refresh(**REFRESH_DATABASE_LIMIT)
 
 

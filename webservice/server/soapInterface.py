@@ -10,7 +10,7 @@ from spyne.service import ServiceBase
 from spyne.server.wsgi import WsgiApplication
 from notification_receiver.receiver import Notification
 from utils.database import Database
-from utils.const import PORT
+from utils.const import PORT, ENV
 
 
 # TODO move those class definitions in another file
@@ -93,12 +93,11 @@ class DisseminationImplService(ServiceBase):
     def disseminate(ctx, requestId, fileURI, disseminationInfo):
         # modify the namespace to comply with openwis client service
         ctx.descriptor.out_message._type_info['disseminationResult'].Attributes.sub_ns = ""
-
         try:
             client_ip = ctx.transport.req["HTTP_X_REAL_IP"]
         except KeyError:
             client_ip = ctx.transport.req.get("REMOTE_ADDR")
-        LOGGER.debug("Received request from ip %s", client_ip)
+        LOGGER.info("Received disseminate request with requestId %s from ip %s", requestId, client_ip)
         notif = Notification(requestId, fileURI, disseminationInfo, client_ip)
         request_status = notif.process()
         diss_resp = DisseminationStatus(requestId, request_status, "dissemination request received")
@@ -108,6 +107,11 @@ class DisseminationImplService(ServiceBase):
     @rpc(Unicode, _returns=DisseminationStatus, _soap_port_type='Dissemination', _out_variable_name='disseminationStatus')
     def monitorDissemination(ctx, requestId):
         # modify the namespace to comply with openwis client service
+        try:
+            client_ip = ctx.transport.req["HTTP_X_REAL_IP"]
+        except KeyError:
+            client_ip = ctx.transport.req.get("REMOTE_ADDR")
+        LOGGER.info("Received monitorDissemination request for requestId %s from ip %s", requestId, client_ip)
         ctx.descriptor.out_message._type_info['disseminationStatus'].Attributes.sub_ns = ""
 
         status, message = Database.get_diss_status(requestId)
@@ -127,11 +131,11 @@ application = Application(
 
 wsgi_application = WsgiApplication(application)
 # TODO url to set with variable env
-port = os.environ.get("MFSERV_NGINX_PORT") or PORT
+port = os.environ.get(ENV.port) or PORT
 hostname = socket.gethostname()
 url = ("http://{hostname}.meteo.fr:{port}/"
        "harnais-diss-v2/webservice/"
        "Dissemination?wsdl".format(hostname=hostname,
                                   port=port))
-url = os.environ.get("MFSERV_HARNESS_SOAP_ADRESS") or url
+url = os.environ.get(ENV.soap_url) or url
 wsgi_application.doc.wsdl11.build_interface_document(url)

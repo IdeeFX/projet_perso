@@ -3,7 +3,7 @@ import os
 import logging
 from multiprocessing.pool import Pool
 from multiprocessing.dummy import Pool as ThreadPool
-from utils.const import DEFAULT_SETTINGS_PATH, DEFAULT_SETTINGS
+from utils.const import DEFAULT_SETTINGS_PATH, DEFAULT_SETTINGS, ENV
 from utils.tools import Tools
 
 LOGGER = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class SettingsManager:
 
         # load yaml settings file
         #TODO move MFSERV_HARNAIS_SETTINGS into const
-        path = cls._settings_file = os.environ.get("MFSERV_HARNESS_SETTINGS", None)
+        path = cls._settings_file = os.environ.get(ENV.settings, None)
         if path is None:
             path = cls._settings_file = os.path.join(os.path.dirname(__file__), settings_file)
 

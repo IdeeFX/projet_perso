@@ -5,8 +5,11 @@ import yaml
 from tempfile import gettempdir
 from distutils.util import strtobool
 from settings.settings_manager import SettingsManager
+from utils.const import ENV
 
-DEFAULT_PATH = '../settings/logging.yaml'
+SETUP_DIR = os.path.dirname(__file__)
+
+DEFAULT_PATH = os.environ.get(ENV.log_settings) or join(SETUP_DIR, '../settings/logging.yaml')
 
 try:
     DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
@@ -29,8 +32,6 @@ def setup_logging(default_path=DEFAULT_PATH):
             new_path = join(log_dir, os.path.basename(original_path))
             in_dict["handlers"][key]["filename"] = new_path
 
-    setup_dir = os.path.dirname(__file__)
-    default_path = join(setup_dir, default_path)
     path = os.path.abspath(default_path)
     if os.path.exists(path):
         with open(path, 'rt') as file_:

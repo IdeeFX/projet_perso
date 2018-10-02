@@ -84,26 +84,7 @@ handlers:
         backupCount: 20
         encoding: utf8
 
-    test_client_file_handler:
-        class: logging.handlers.RotatingFileHandler
-        level: DEBUG
-        formatter: simple
-        filename: /tmp/test_client.log
-        maxBytes: 10485760 # 10MB
-        backupCount: 20
-        encoding: utf8
-
 loggers:
-    test_client:
-        level: DEBUG
-        handlers: [test_client_file_handler]
-        propagate: no
-
-    server:
-        level: DEBUG
-        handlers: [server_file_handler, info_file_handler, error_file_handler]
-        propagate: no
-
     file_manager.manager:
         level: DEBUG
         handlers: [manager_file_handler, info_file_handler, error_file_handler]
@@ -135,6 +116,11 @@ loggers:
         propagate: no
 
     webservice.server.soapInterface:
+        level: DEBUG
+        handlers: [server_file_handler, info_file_handler, error_file_handler]
+        propagate: no
+
+    webservice.server.application:
         level: DEBUG
         handlers: [server_file_handler, info_file_handler, error_file_handler]
         propagate: no

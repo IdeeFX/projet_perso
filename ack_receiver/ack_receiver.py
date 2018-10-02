@@ -9,7 +9,7 @@ from lxml import etree
 from distutils.util import strtobool
 from setproctitle import setproctitle
 from utils.setup_tree import HarnessTree
-from utils.const import REQ_STATUS
+from utils.const import REQ_STATUS, ENV
 from utils.log_setup import setup_logging
 from utils.tools import Tools
 from utils.database import Database, Diffusion
@@ -29,7 +29,7 @@ LOGGER.debug("Logging configuration set up in %s", __name__)
 LOGGER.info("Ack Receiver setup complete")
 # TODO move environment variables into utils.const
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 

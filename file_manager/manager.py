@@ -19,19 +19,15 @@ from utils.log_setup import setup_logging
 from utils.setup_tree import HarnessTree
 from utils.database import Database, Diffusion
 from utils.const import (REQ_STATUS, SCP_PARAMETERS, DEBUG_TIMEOUT, PRIORITIES,
-                         MAX_REGEX, DEFAULT_ATTACHMENT_NAME)
+                         MAX_REGEX, DEFAULT_ATTACHMENT_NAME, ENV)
 from utils.tools import Tools, Incrementator
 from webservice.server.application import APP
 
 
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
-try:
-    TEST_SFTP = bool(strtobool(os.environ.get("MFSERV_HARNESS_TEST_SFTP") or "False"))
-except ValueError:
-    TEST_SFTP = False
 
 
 # initialize LOGGER
@@ -311,9 +307,7 @@ class ConnectionPointer:
         # move the file if hostname is localhost. Sftp it otherwise
         # TODO prendre en considération Harnessdiss.synchro en 8.5
         files_fetched = []
-        if self.hostname == "localhost" and \
-           os.path.isdir(dir_path) and \
-           not TEST_SFTP:
+        if self.hostname == "localhost" and os.path.isdir(dir_path):
             for item in os.listdir(dir_path):
                 file_path = os.path.join(dir_path, item)
                 # folders are ignored
@@ -324,6 +318,8 @@ class ConnectionPointer:
                 # if the file has already been fetched by a previous instruction file,
                 # we don't do it again
                 if not os.path.isfile(destination_path):
+                    LOGGER.debug("Copying file from %s to %s.",
+                                  file_path, destination_path)
                     shutil.copy(file_path, destination_path)
                 self.update_filename(item)
                 files_fetched.append(file_path)
@@ -372,6 +368,7 @@ class ConnectionPointer:
                 # we don't do it again
                 if os.path.isfile(destination_path):
                     files_to_scp.append((file_path, destination_path))
+                    LOGGER.debug("File %s already downloaded, moving on", file_path)
                     continue
                 mode = sftp.stat(file_path).st_mode
                 # ignore directories

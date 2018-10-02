@@ -5,7 +5,7 @@ import os
 import shutil
 import signal
 from subprocess import check_output, CalledProcessError
-from utils.const import RANDOM_ID_LENGTH
+from utils.const import RANDOM_ID_LENGTH, ENV
 
 class Tools:
 
@@ -53,13 +53,13 @@ class Tools:
 
     @staticmethod
     def remove_file(file_path, file_tag, logger):
-        rep = os.environ.get("MFSERV_HARNESS_TRASH")
+        rep = os.environ.get(ENV.trash)
         try:
             is_dir = os.path.isdir(rep)
         except TypeError:
             if rep is not None:
-                logger.error("Value of environment variable MFSERV_HARNESS_TRASH "
-                            "is not a path to a directory.")
+                logger.error("Value of environment variable %s "
+                            "is not a path to a directory.", ENV.trash)
             is_dir = False
 
         if is_dir:
@@ -71,13 +71,13 @@ class Tools:
 
     @staticmethod
     def clear_trash_can():
-        rep = os.environ.get("MFSERV_HARNESS_TRASH")
+        rep = os.environ.get(ENV.trash)
         try:
             is_dir = os.path.isdir(rep)
         except TypeError:
             if rep is not None:
-                logger.error("Value of environment variable MFSERV_HARNESS_TRASH "
-                            "is not a path to a directory.")
+                logger.error("Value of environment variable %s "
+                            "is not a path to a directory.", ENV.trash)
             is_dir = False
 
         if is_dir:
