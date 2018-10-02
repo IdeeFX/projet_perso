@@ -63,7 +63,9 @@ def launch(launch_logger=None, debug=True):
         launch_logger.info("Debug mode activated. Multiprocessing is done through threads "
                     " and not subprocess and is thus slower.")
     else:
-        executor_class = ProcessPoolExecutor
+        # TODO fix multiprocessing
+        executor_class = ThreadPoolExecutor
+        # executor_class = ProcessPoolExecutor
 
     process_status = [None]*3
     proc_list = [DifmetSender.process,
