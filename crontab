@@ -2,4 +2,4 @@
 # Replace it to -t 0 once the bug has been fixed in metwork.
 # As it is, the service would restart every 86400s (one day)
 * * * * * {{MFSERV_HOME}}/bin/cronwrap.sh -l -e -t 86400 -- layer_wrapper --layers=plugin_harnais-diss-v2@mfserv -- python {{MODULE_RUNTIME_HOME}}/var/plugins/harnais-diss-v2/harness_launcher.py >> {{MODULE_RUNTIME_HOME}}/log/harnais_launcher.log 2>&1
-#
+# commented line  at end of file seems to be necessary (?!)
