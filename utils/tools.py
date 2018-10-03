@@ -64,7 +64,7 @@ class Tools:
             is_dir = False
 
         if is_dir:
-            if os.path.isfile(file_path):
+            if not os.path.isfile(file_path):
                 shutil.move(file_path, rep)
             else:
                 os.remove(join(rep, bsename(file_path)))
