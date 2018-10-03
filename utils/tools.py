@@ -64,10 +64,11 @@ class Tools:
             is_dir = False
 
         if is_dir:
-            if not os.path.isfile(file_path):
+            trash_path = join(rep, basename(file_path))
+            if not os.path.isfile(trash_path):
                 shutil.move(file_path, rep)
             else:
-                os.remove(join(rep, bsename(file_path)))
+                os.remove(trash_path)
                 shutil.move(file_path, rep)
             logger.debug("%s file %s moved to %s", file_tag, file_path, rep)
         else:
