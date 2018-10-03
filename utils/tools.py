@@ -2,6 +2,7 @@ import random
 import hashlib
 import string
 import os
+from os.path import join, basename
 import shutil
 import signal
 from subprocess import check_output, CalledProcessError
@@ -63,7 +64,11 @@ class Tools:
             is_dir = False
 
         if is_dir:
-            shutil.move(file_path, rep)
+            if os.path.isfile(file_path):
+                shutil.move(file_path, rep)
+            else:
+                os.remove(join(rep, bsename(file_path)))
+                shutil.move(file_path, rep)
             logger.debug("%s file %s moved to %s", file_tag, file_path, rep)
         else:
             logger.debug("Deleting %s file %s.", file_tag, file_path)
