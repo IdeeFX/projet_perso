@@ -181,3 +181,6 @@ def test_harnais_complet():
     SoapServer.stop_server()
 
     print("fin")
+
+if __name__ == "__main__":
+    test_harnais_complet()
