@@ -18,7 +18,7 @@ from utils.log_setup import setup_logging
 #         self.temp_dir = tempfile.TemporaryDirectory()
 #         self.pwd = os.getenv("$TEST_SCP_PASSWORD")
 
-#     def test_scp(self):
+#     def test_sftp(self):
 
 #         # TODO prepare for automation
 #         SettingsManager.update(dict(openwisStagingPath="/tmp/",
@@ -36,17 +36,17 @@ from utils.log_setup import setup_logging
 #         pointer = ConnectionPointer("123456","localhost")
 
 #         with tempfile.NamedTemporaryFile() as test_file:
-#             # pointer.scp(test_file.name)
-#             pointer.scp_dir("/tmp/", "/tmp/")
+#             # pointer.sftp(test_file.name)
+#             pointer.sftp_dir("/tmp/", "/tmp/")
 
 #             # dirname = self.temp_dir.name
 #             # basename = os.path.basename(test_file.name)
 #             dirname = "/tmp/"
 #             basename = "test.txt"
 #             self.assertTrue(os.path.isfile(os.path.join(dirname, basename)),
-#                             msg="Failure to scp a dummy file from {h}".format(h=SettingsManager.get("openwisHost")))
+#                             msg="Failure to sftp a dummy file from {h}".format(h=SettingsManager.get("openwisHost")))
 #             # self.assertTrue(os.path.isfile(os.path.join(dirname,basename)),
-#             #                 msg="Failure to scp a dummy file from localhost to localhost")
+#             #                 msg="Failure to sftp a dummy file from localhost to localhost")
 
 #     def tearDown(self):
 

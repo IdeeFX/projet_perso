@@ -12,6 +12,7 @@ REQ_STATUS = ReqStatus(succeeded="DISSEMINATED",
 PORT = 8080
 
 DEBUG_TIMEOUT = 10
+TIMEOUT = 3600
 
 Directories = namedtuple("REPERTORY_TREE", ["temp_dissrequest_a",
                                             "temp_dissrequest_b",
@@ -26,12 +27,12 @@ REPERTORY_TREE = Directories(temp_dissrequest_a="cache/A_dissreq",
                              temp_dissrequest_d="cache/D_sending")
 
 
-ScpSettings = namedtuple("SCP_PARAMETERS", ["timeout_buffer",
+SftpSettings = namedtuple("SFTP_PARAMETERS", ["timeout_buffer",
                                             "workers"]
                            )
 
 #TODO move to parameters
-SCP_PARAMETERS = ScpSettings(timeout_buffer=10,
+SFTP_PARAMETERS = SftpSettings(timeout_buffer=10,
                              workers=1)
 
 RANDOM_ID_LENGTH = 20

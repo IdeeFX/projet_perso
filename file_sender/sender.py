@@ -13,7 +13,7 @@ from setproctitle import setproctitle
 from ftplib import FTP, error_perm
 from utils.setup_tree import HarnessTree
 from utils.log_setup import setup_logging
-from utils.const import SCP_PARAMETERS, ENV
+from utils.const import SFTP_PARAMETERS, ENV
 from utils.tools import Tools
 from settings.settings_manager import SettingsManager, DebugSettingsManager
 from webservice.server.application import APP
@@ -49,7 +49,7 @@ class DifmetSender:
             pool_method = DebugSettingsManager.ftp_pool
         else:
             pool_method = Pool
-        cls.pool = pool_method(processes=SCP_PARAMETERS.workers)
+        cls.pool = pool_method(processes=SFTP_PARAMETERS.workers)
         counter = 0
         if not cls._running:
             LOGGER.info("Sender process starting")
@@ -102,7 +102,7 @@ class DifmetSender:
                     timeout = None
                 else:
                     # conversion in Mbits/s with shift_expr << operator
-                    timeout = size/bandwidth*1 << 17*SCP_PARAMETERS.timeout_buffer
+                    timeout = size/bandwidth*1 << 17*SFTP_PARAMETERS.timeout_buffer
 
                 # TODO try to improve speed by connecting once and pass the FTP object.
                 # might not work though because of pickle issues in multiprocessing
