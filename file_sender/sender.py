@@ -13,7 +13,7 @@ from setproctitle import setproctitle
 from ftplib import FTP, error_perm
 from utils.setup_tree import HarnessTree
 from utils.log_setup import setup_logging
-from utils.const import SFTP_PARAMETERS, ENV
+from utils.const import SFTP_PARAMETERS, ENV, TIMEOUT, DEBUG_TIMEOUT
 from utils.tools import Tools
 from settings.settings_manager import SettingsManager, DebugSettingsManager
 from webservice.server.application import APP
@@ -38,6 +38,47 @@ class DifmetSender:
     dir_d = None
     nb_workers = None
 
+    @staticmethod
+    def get_pool_method():
+        if DEBUG:
+            pool_method = DebugSettingsManager.ftp_pool
+        else:
+            pool_method = Pool
+
+        return pool_method
+
+    @classmethod
+    def setup_process(cls):
+        if not cls._running:
+            LOGGER.info("Sender process starting")
+            # create tree structure if necessary
+            HarnessTree.setup_tree()
+            cls._running = True
+
+    @staticmethod
+    def signal_loop(counter):
+        if counter % 10 ==0:
+            LOGGER.debug("Sender process is running. "
+                         "Loop number %i", counter)
+
+    @staticmethod
+    def load_settings():
+        loaded = SettingsManager.load_settings()
+        if loaded:
+            LOGGER.debug("Settings loaded")
+
+    @classmethod
+    def update_workers(cls):
+        # update the number of workers if necessary
+        nbw = SettingsManager.get("sendFTPlimitConn")
+        if nbw != cls.nb_workers:
+            #wait for every upload to be finished
+            cls.pool.close()
+            cls.pool.join()
+            #update workers
+            cls.nb_workers = nbw
+            cls.pool = pool_method(processes=nbw)
+
     @classmethod
     def process(cls , max_loops=0):
         if not DEBUG:
@@ -45,37 +86,16 @@ class DifmetSender:
             setproctitle(process_name)
         cls.nb_workers = SettingsManager.get("sendFTPlimitConn")
         # in debug mode, it is possible to set
-        if DEBUG:
-            pool_method = DebugSettingsManager.ftp_pool
-        else:
-            pool_method = Pool
+        pool_method = cls.get_pool_method()
         cls.pool = pool_method(processes=SFTP_PARAMETERS.workers)
         counter = 0
-        if not cls._running:
-            LOGGER.info("Sender process starting")
-            # create tree structure if necessary
-            HarnessTree.setup_tree()
-            cls._running = True
-
+        cls.setup_process()
         while cls._running:
             counter +=1
 
-            if counter % 10 ==0:
-                LOGGER.debug("Sender process is running. "
-                             "Loop number %i", counter)
-            loaded = SettingsManager.load_settings()
-            if loaded:
-                LOGGER.debug("Settings loaded")
-            # update the number of workers if necessary
-            nbw = SettingsManager.get("sendFTPlimitConn")
-            if nbw != cls.nb_workers:
-                #wait for every upload to be finished
-                cls.pool.close()
-                cls.pool.join()
-                #update workers
-                cls.nb_workers = nbw
-                cls.pool = pool_method(processes=nbw)
-
+            cls.signal_loop(counter)
+            cls.load_settings()
+            cls.update_workers()
             # idle time
             # TODO check default value
             idle_time = SettingsManager.get("sendFTPIdle") or 10
@@ -95,18 +115,13 @@ class DifmetSender:
 
             for file_ in files_to_ftp:
                 size = os.stat(file_)
-                bandwidth = SettingsManager.get("bandwidth")
-                if bandwidth in [None, 0]:
-                    LOGGER.warning("Incorrect value for harness settings bandwidth."
-                                   " Scp timeout desactivated.")
-                    timeout = None
-                else:
-                    # conversion in Mbits/s with shift_expr << operator
-                    timeout = size/bandwidth*1 << 17*SFTP_PARAMETERS.timeout_buffer
+
+                timeout= cls.compute_timeout(size)
 
                 # TODO try to improve speed by connecting once and pass the FTP object.
                 # might not work though because of pickle issues in multiprocessing
                 # the timeout is managed at pool level, not individually
+                # start download
                 res = cls.pool.apply_async(cls.abortable_ftp,
                                             (cls.upload_file, file_),
                                             dict(timeout=timeout))
@@ -115,6 +130,27 @@ class DifmetSender:
             if counter == max_loops:
                 LOGGER.info("Performed required %i loops, exiting.", counter)
                 cls.stop()
+
+    @staticmethod
+    def compute_timeout(required_bandwith):
+        # compute timeout
+        bandwidth = SettingsManager.get("bandwidth")
+        if bandwidth in [None, 0]:
+            LOGGER.warning("Incorrect value for harness settings bandwidth. "
+                           "ftp timeout set to default TIMEOUT %i s.",
+                            TIMEOUT)
+            timeout = TIMEOUT
+        elif DEBUG:
+            timeout = DEBUG_TIMEOUT
+            LOGGER.debug("Sftp debug timeout set to %s s", timeout)
+        else:
+            # conversion in Mbits/s with shift_expr << operator
+            timeout = required_bandwith/bandwidth*1 << 17*SFTP_PARAMETERS.timeout_buffer
+            LOGGER.debug("Ftp timeout computed to %s s", timeout)
+
+
+        return timeout
+
 
     @classmethod
     def stop(cls):

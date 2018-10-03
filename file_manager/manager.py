@@ -28,7 +28,10 @@ try:
     DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
-
+try:
+    TEST_SFTP = bool(strtobool(os.environ.get("MFSERV_HARNESS_TEST_SFTP") or "False"))
+except ValueError:
+    TEST_SFTP = False
 
 # initialize LOGGER
 setup_logging()
@@ -341,7 +344,9 @@ class ConnectionPointer:
         # move the file if hostname is localhost. Sftp it otherwise
         # TODO prendre en considération Harnessdiss.synchro en 8.5
         files_fetched = []
-        if self.hostname == "localhost" and os.path.isdir(dir_path):
+        if self.hostname == "localhost" and \
+           os.path.isdir(dir_path) and \
+           not TEST_SFTP:
             for item in os.listdir(dir_path):
                 file_path = os.path.join(dir_path, item)
                 # folders are ignored
@@ -370,15 +375,16 @@ class ConnectionPointer:
         return fetch_ok, files_fetched
 
 
-    def _sftp_file(self, dir_path, file_path, destination_path):
+    def _sftp_file(self, dir_path, file_path, destination_path, skip):
 
-
+        if not skip:
             transport = paramiko.Transport((self.hostname, self.port))
             transport.connect(username=self.user, password=self.password)
             sftp = paramiko.SFTPClient.from_transport(transport)
             sftp.chdir(dir_path)
             sftp.get(file_path, destination_path)
             sftp.close()
+            transport.close()
 
     def sftp_dir(self, dir_path, destination_dir):
 
@@ -395,7 +401,7 @@ class ConnectionPointer:
                 # if the file has already been fetched by a previous instruction file,
                 # we don't do it again
                 if os.path.isfile(destination_path):
-                    files_to_sftp.append((dir_path, file_path, destination_path))
+                    files_to_sftp.append((dir_path, file_path, destination_path, True))
                     LOGGER.debug("File %s already downloaded, moving on", file_path)
                     continue
                 mode = sftp.stat(file_path).st_mode
@@ -415,9 +421,10 @@ class ConnectionPointer:
                 LOGGER.debug('file %s found on openwis staging post',
                              file_path
                              )
-                files_to_sftp.append((dir_path, file_path, destination_path))
+                files_to_sftp.append((dir_path, file_path, destination_path, False))
 
             sftp.close()
+            transport.close()
 
             # initialize the multiprocessing manager
             if DEBUG:
@@ -426,12 +433,12 @@ class ConnectionPointer:
                 pool = multiprocessing.Pool(processes=SFTP_PARAMETERS.workers)
             results = pool.starmap_async(self._sftp_file, files_to_sftp)
 
-            timeout = self.compute_timeout()
+            timeout = self.compute_timeout(required_bandwith)
 
+            nb_downloads = sum([not i[3] for i in files_to_sftp])
             try:
                 LOGGER.debug("Attempting download of %i files, for a total size of "
-                             " %f. Timeout is fixed at %s s.", len(
-                                 files_to_sftp),
+                             " %f. Timeout is fixed at %s s.", nb_downloads,
                              required_bandwith, timeout)
                 results.get(timeout=timeout)
                 sftp_success = True
@@ -478,8 +485,10 @@ class ConnectionPointer:
     @staticmethod
     def check_download_success(files_to_sftp, sftp_success):
 
-        for _, remote_path, local_path in files_to_sftp:
-            if os.path.isfile(local_path):
+        for _, remote_path, local_path, skip in files_to_sftp:
+            if skip:
+                sftp_success = True and sftp_success
+            elif os.path.isfile(local_path):
                 LOGGER.debug('file %s downloaded in repertory %s',
                                 remote_path,
                                 os.path.dirname(local_path)
@@ -494,12 +503,12 @@ class ConnectionPointer:
         return sftp_success
 
     @staticmethod
-    def compute_timeout():
+    def compute_timeout(required_bandwith):
         # compute timeout
         bandwidth = SettingsManager.get("bandwidth")
         if bandwidth in [None, 0]:
             LOGGER.warning("Incorrect value for harness settings bandwidth. "
-                           "Scp timeout set to default TIMEOUT %i s.",
+                           "Sftp timeout set to default TIMEOUT %i s.",
                             TIMEOUT)
             timeout = TIMEOUT
         elif DEBUG:
@@ -516,7 +525,7 @@ class ConnectionPointer:
     def update(self, sftp_success, files_to_sftp):
         files_downloaded = []
         if sftp_success:
-            for  _, _, local_path in files_to_sftp:
+            for  _, _, local_path, _ in files_to_sftp:
                 self.update_filename(os.path.basename(local_path))
                 files_downloaded.append(local_path)
 
@@ -694,17 +703,8 @@ class DiffMetManager:
 
         return res
 
-    # TODO tostring method
-    def _create_diffmet_instr(self):
-
-        def get_prefix(diff):
-            if diff["DiffusionType"] == "FTP":
-                prefix = "standby_ftp_"
-            else:
-                prefix = "standby_email_"
-
-            return prefix
-
+    @staticmethod
+    def diff_info_to_xml(element,diff_info,prefix=""):
         def bin_bool(in_boolean):
             return str(int(in_boolean))
 
@@ -742,11 +742,24 @@ class DiffMetManager:
             else:
                 etree.SubElement(element, prefix + "email_attached_file_name").text = DEFAULT_ATTACHMENT_NAME
 
-        def diff_info_to_xml(element,diff_info,prefix=""):
-            if diff_info["DiffusionType"] == "FTP":
-                ftp_to_xml(element, diff_info, prefix="")
-            elif diff_info["DiffusionType"] == "EMAIL":
-                mail_to_xml(element, diff_info, prefix="")
+        if diff_info["DiffusionType"] == "FTP":
+            ftp_to_xml(element, diff_info, prefix="")
+        elif diff_info["DiffusionType"] == "EMAIL":
+            mail_to_xml(element, diff_info, prefix="")
+
+
+
+    # TODO tostring method
+    def _create_diffmet_instr(self):
+
+        def get_prefix(diff):
+            if diff["DiffusionType"] == "FTP":
+                prefix = "standby_ftp_"
+            else:
+                prefix = "standby_email_"
+
+            return prefix
+
 
         date_str = strftime("%Y%m%d%H%M%S")
         path_to_file = ",".join((SettingsManager.get("diffFileName"),
@@ -772,12 +785,12 @@ class DiffMetManager:
             etree.SubElement(diffusion,"diffusion_externalid").text = Database.get_external_id(req_id)
             etree.SubElement(diffusion,"archive").text = "0"
 
-            diff_info_to_xml(diffusion, diff)
+            self.diff_info_to_xml(diffusion, diff)
 
             if "alternativeDiffusion" in instr.keys():
                 altdiff = instr["alternativeDiffusion"]
                 prefix = get_prefix(altdiff)
-                diff_info_to_xml(diffusion,altdiff, prefix=prefix)
+                self.diff_info_to_xml(diffusion,altdiff, prefix=prefix)
                 etree.SubElement(diffusion,"standby_media").text = altdiff["DiffusionType"]
 
             etree.SubElement(diffusion,"standby_switch_try_number").text = "3"

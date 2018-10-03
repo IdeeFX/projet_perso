@@ -11,7 +11,7 @@ REQ_STATUS = ReqStatus(succeeded="DISSEMINATED",
 
 PORT = 8080
 
-DEBUG_TIMEOUT = 10
+DEBUG_TIMEOUT = 30
 TIMEOUT = 3600
 
 Directories = namedtuple("REPERTORY_TREE", ["temp_dissrequest_a",

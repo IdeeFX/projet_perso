@@ -30,13 +30,13 @@ def test_harnais_complet():
     Database.initialize_database(APP)
     Database.refresh(**{"seconds":0})
     #clear files
-    dir_A = HarnessTree.get("temp_dissRequest_A")
-    dir_B = HarnessTree.get("temp_dissRequest_B")
-    dir_C = HarnessTree.get("temp_dissRequest_C")
+    dir_a = HarnessTree.get("temp_dissRequest_A")
+    dir_b = HarnessTree.get("temp_dissRequest_B")
+    dir_c = HarnessTree.get("temp_dissRequest_C")
 
 
 
-    for dir_ in [dir_A,dir_B,dir_C]:
+    for dir_ in [dir_a,dir_b,dir_c]:
         clear_dir(dir_)
 
     SoapServer.create_server()
@@ -94,7 +94,7 @@ def test_harnais_complet():
 
         Tools.kill_process("diffmet_test_ftp_server")
         FTPserver.create_server("/")
-        SettingsManager.update(dict(dissHost="0.0.0.0",
+        SettingsManager.update(dict(dissHost="0.0." + "0.0",
                                     dissFtpUser="user",
                                     dissFtpPasswd="12345",
                                     dissFtpDir=deposit,
@@ -113,11 +113,16 @@ def test_harnais_complet():
             print("DifMet success")
         except KeyboardInterrupt:
             FTPserver.stop_server()
-
-    req_id1 = "123456" + hostname
-    req_id2 = "654321" + hostname
-    ext_id1=Database.get_external_id("123456" + hostname)
-    ext_id2=Database.get_external_id("654321" + hostname)
+    try:
+        req_id1 = "123456" + hostname
+        req_id2 = "654321" + hostname
+        ext_id1=Database.get_external_id("123456" + hostname)
+        ext_id2=Database.get_external_id("654321" + hostname)
+    except AttributeError:
+        req_id1 = "123456" + "localhost"
+        req_id2 = "654321" + "localhost"
+        ext_id1=Database.get_external_id("123456" + "localhost")
+        ext_id2=Database.get_external_id("654321" + "localhost")
 
     with TemporaryDirectory(prefix="ack_") as ack_deposit:
 
