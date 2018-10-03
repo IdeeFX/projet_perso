@@ -27,7 +27,8 @@ class Notification():
         self.hostname = self.get_hostname(client_ip)
         LOGGER.debug("Created a Notification object with id %s", req_id)
 
-    def compute_priority(self, priority, sla):
+    @staticmethod
+    def compute_priority(priority, sla):
 
         # priority is scaled from 1 (highest) to 4 (lowest)
         # sla is 0 (BRONZE), 1 (SILVER), 2 (GOLD)
@@ -163,7 +164,8 @@ class Notification():
 
         return REQ_STATUS.failed
 
-    def get_hostname(self, client_ip):
+    @staticmethod
+    def get_hostname(client_ip):
         # get hostname
         try:
             hostname = socket.gethostbyaddr(client_ip)[0]

@@ -80,7 +80,7 @@ def test_harnais_complet():
         thr.start()
 
         try:
-            thr.join(60)
+            thr.join()
             # thr.join()
             # stopping file manager
             FileManager.stop()
@@ -107,7 +107,7 @@ def test_harnais_complet():
 
         try:
             thr.start()
-            thr.join(80)
+            thr.join()
             # stopping file manager
             DifmetSender.stop()
             print("DifMet success")
