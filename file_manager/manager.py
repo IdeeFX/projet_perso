@@ -340,19 +340,17 @@ class ConnectionPointer:
         raise NotImplementedError
         return new_path
 
-    # @staticmethod
-    # def _scp_file(sftp, *args,**kwargs):
-    #         # ssh = paramiko.SSHClient()
-    #         # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    def _scp_file(self, dir_path, file_path, destination_path):
 
-    #         # ssh.connect(**kwargs)
-    #         # sftp = ssh.open_sftp()
-    #         sftp.get(*args)
-    #         # sftp.close()
-    #         # ssh.close()
+
+            transport = paramiko.Transport((self.hostname, self.port))
+            transport.connect(username=self.user, password=self.password)
+            sftp = paramiko.SFTPClient.from_transport(transport)
+            sftp.chdir(dir_path)
+            sftp.get(file_path, destination_path)
+            sftp.close()
 
     def scp_dir(self, dir_path, destination_dir):
-
 
         files_to_scp = []
         try:
@@ -367,7 +365,7 @@ class ConnectionPointer:
                 # if the file has already been fetched by a previous instruction file,
                 # we don't do it again
                 if os.path.isfile(destination_path):
-                    files_to_scp.append((file_path, destination_path))
+                    files_to_scp.append((dir_path, file_path, destination_path))
                     LOGGER.debug("File %s already downloaded, moving on", file_path)
                     continue
                 mode = sftp.stat(file_path).st_mode
@@ -387,9 +385,9 @@ class ConnectionPointer:
                 LOGGER.debug('file %s found on openwis staging post',
                              file_path
                              )
-                files_to_scp.append((file_path, destination_path))
+                files_to_scp.append((dir_path, file_path, destination_path))
 
-
+            sftp.close()
 
             # initialize the multiprocessing manager
             if DEBUG:
@@ -401,7 +399,7 @@ class ConnectionPointer:
             # TODO clean up
             # scp_files = partial(self._scp_file, **connection_info)
             # results = pool.starmap_async(scp_files, files_to_scp)
-            results = pool.starmap_async(sftp.get, files_to_scp)
+            results = pool.starmap_async(self._scp_file, files_to_scp)
             # compute timeout
             bandwidth = SettingsManager.get("bandwidth")
             if bandwidth in [None, 0]:
@@ -430,7 +428,7 @@ class ConnectionPointer:
                 scp_success = False
 
             # check download success and unzip if necessary then update database
-            for remote_path, local_path in files_to_scp:
+            for _, remote_path, local_path in files_to_scp:
                 if os.path.isfile(local_path):
                     LOGGER.debug('file %s downloaded in repertory %s',
                                  remote_path,
@@ -476,7 +474,7 @@ class ConnectionPointer:
         # update database
         files_downloaded = []
         if scp_success:
-            for  _, local_path in files_to_scp:
+            for  _, _, local_path in files_to_scp:
                 self.update_filename(os.path.basename(local_path))
                 files_downloaded.append(local_path)
 
