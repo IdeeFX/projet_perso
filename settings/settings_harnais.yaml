@@ -49,9 +49,8 @@ keepfiletime:
 # Bande passante (mbits) estimée, permettant la gestion du timeout
 bandwidth:
 # Expression régulière à appliquer aux fichiers tmp.zip
-tmpregex:
+tmpregex: 'fr-met,tmpzip[:$requestID],[:$sequence]-[:$hostname],[:$YYYY][:$MM][:$DD][:$HH][:$mm][:$SS].zip'
 # Première expression régulière à appliquer sur le fichier
-
 fileregex1:
   pattern_in: '^[A-Z]_([a-zA-Z0-9,\-\+]+)_C_([A-Z0-9]+)_([0-9]+)_?.*\.(.*)$'
   pattern_out: 'fr-met,\g<1>\g<2>,[:$sequence]-[:$hostname],\g<3>.\g<4>'

@@ -58,7 +58,7 @@ DEFAULT_SETTINGS = default_settings(diffFileName="fr-meteo-harnaisdiss",
 
 
 # TODO check if it should be a parameter
-DEFAULT_ATTACHMENT_NAME = "meteo_france_product"
+DEFAULT_ATTACHMENT_NAME = "MeteoFrance_product"
 
 MAX_REGEX = 20
 

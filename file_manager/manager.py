@@ -53,21 +53,13 @@ class FileManager:
             setproctitle(process_name)
         counter = 0
         instr_to_process = False
-        if not cls._running:
-            LOGGER.info("File manager process starting")
-            # create tree structure if necessary
-            HarnessTree.setup_tree()
-            #connect the database
-            Database.initialize_database(APP)
-            cls._running = True
+        cls.setup_process()
         while cls._running:
             counter +=1
-            if counter % 10 ==0:
-                LOGGER.debug("File manager process is running. "
-                             "Loop number %i", counter)
-            loaded = SettingsManager.load_settings()
-            if loaded:
-                LOGGER.debug("Settings loaded")
+
+            cls.signal_loop(counter)
+            cls.load_settings()
+
             cls.dir_a = dir_a = HarnessTree.get("temp_dissRequest_A")
             cls.dir_b = dir_b = HarnessTree.get("temp_dissRequest_B")
             cls.dir_c = HarnessTree.get("temp_dissRequest_C")
@@ -110,54 +102,95 @@ class FileManager:
                     all_files_fetched += [item for item in files_fetched if
                                          item not in all_files_fetched]
 
-            # process files fetched
-            for file_path in all_files_fetched:
+            cls.package_data(all_files_fetched, diss_instructions)
 
-                filename = os.path.basename(file_path)
-                requestId_list = Database.get_id_list_by_filename(filename)
+            cls.clear_instruction_files(instruction_files)
 
-                # no reference
-                if requestId_list == []:
-                    Tools.remove_file(file_path, "orphan file", LOGGER)
-                    continue
+            cls.clear_orphan_files(dir_b)
 
-                # purge requestId_list or req_id that are not in
-                # diss_instructions keys. That is to prevent trying to find
-                # an instruction file related to a file that has been processed
-                # by a previous request
+            cls.check_end_loop(counter, max_loops)
 
-                requestId_list = [item for item in requestId_list
-                                  if item in diss_instructions.keys()]
+    @staticmethod
+    def package_data(all_files_fetched, diss_instructions):
+        # process files fetched
+        for file_path in all_files_fetched:
 
-                LOGGER.debug("Processing downloaded file %s linked to "
-                            "requests %s", file_path, requestId_list)
+            filename = os.path.basename(file_path)
+            request_id_list = Database.get_id_list_by_filename(filename)
 
-                diff_manager = DiffMetManager(
-                    requestId_list, file_path, diss_instructions)
-                # rename files according to regex
-                diff_manager.rename()
-                # package the archive
-                diff_manager.compile_archive()
+            # no reference
+            if request_id_list == []:
+                Tools.remove_file(file_path, "orphan file", LOGGER)
+                continue
+
+            # purge requestId_list or req_id that are not in
+            # diss_instructions keys. That is to prevent trying to find
+            # an instruction file related to a file that has been processed
+            # by a previous request
+
+            request_id_list = [item for item in request_id_list
+                                if item in diss_instructions.keys()]
+
+            LOGGER.debug("Processing downloaded file %s linked to "
+                        "requests %s", file_path, request_id_list)
+
+            diff_manager = DiffMetManager(request_id_list,
+                                          file_path,
+                                          diss_instructions)
+            # rename files according to regex
+            diff_manager.rename()
+            # package the archive
+            diff_manager.compile_archive()
+
+    @classmethod
+    def check_end_loop(cls, counter, max_loops):
+        if counter == max_loops:
+            LOGGER.info("Performed required %i loops, exiting.", counter)
+            cls.stop()
+
+    @staticmethod
+    def signal_loop(counter):
+        if counter % 10 ==0:
+            LOGGER.debug("File manager process is running. "
+                            "Loop number %i", counter)
+
+    @staticmethod
+    def load_settings():
+        loaded = SettingsManager.load_settings()
+        if loaded:
+            LOGGER.debug("Settings loaded")
+
+    @classmethod
+    def setup_process(cls):
+        if not cls._running:
+            LOGGER.info("File manager process starting")
+            # create tree structure if necessary
+            HarnessTree.setup_tree()
+            #connect the database
+            Database.initialize_database(APP)
+            cls._running = True
+
+    @staticmethod
+    def clear_instruction_files(instruction_files):
+        # cleaning instruction files
+        for file_ in instruction_files:
+            try:
+                Tools.remove_file(file_, "instruction", LOGGER)
+            # file either was moved back to repertory A or deleted
+            except FileNotFoundError:
+                pass
+
+    @staticmethod
+    def clear_orphan_files(dir_):
+        # cleaning other files
+        for file_ in os.listdir(dir_):
+            file_path = os.path.join(dir_, file_)
+            try:
+                Tools.remove_file(file_, "orphan", LOGGER)
+            except FileNotFoundError:
+                pass
 
 
-            # cleaning instruction files
-            for file_ in instruction_files:
-                try:
-                    Tools.remove_file(file_, "instruction", LOGGER)
-                # file either was moved back to repertory A or deleted
-                except FileNotFoundError:
-                    pass
-
-            # cleaning other files
-            for file_ in os.listdir(dir_b):
-                file_path = os.path.join(dir_b, file_)
-                try:
-                    Tools.remove_file(file_, "orphan", LOGGER)
-                except FileNotFoundError:
-                    pass
-            if counter == max_loops:
-                LOGGER.info("Performed required %i loops, exiting.", counter)
-                cls.stop()
 
     @classmethod
     def stop(cls):
@@ -336,10 +369,6 @@ class ConnectionPointer:
 
         return fetch_ok, files_fetched
 
-    def unzip_file(self, list_files):
-        # TODO obviously...
-        raise NotImplementedError
-        return new_path
 
     def _scp_file(self, dir_path, file_path, destination_path):
 
@@ -430,16 +459,13 @@ class ConnectionPointer:
                     "Timeout exceeded for fetching files on staging post.")
                 scp_success = False
 
-            # check download success and unzip if necessary then update database
+            # check download success and rename zip if necessary then update database
             for _, remote_path, local_path in files_to_scp:
                 if os.path.isfile(local_path):
                     LOGGER.debug('file %s downloaded in repertory %s',
                                  remote_path,
                                  os.path.dirname(local_path)
                                  )
-                    # unzip and gets new name
-                    if os.path.basename(local_path) == "tmp.zip":
-                        local_path = self.unzip_file(local_path)
                     scp_success = True and scp_success
                 else:
                     LOGGER.error("Download of file %s in repertory %s failed.", remote_path,
@@ -551,14 +577,21 @@ class DiffMetManager:
             "fileRegex%i" % i, {}) for i in range(1, MAX_REGEX+1)]
 
         new_filename = self.original_filename
-        for idx, regex_instruction in enumerate(regex_settings):
-            reg = regex_instruction.get("pattern_in", None)
-            repl = regex_instruction.get("pattern_out", None)
+        if new_filename == "tmp.zip":
+            zip_regex = SettingsManager.get("tmpregex")
+            if zip_regex is None:
+                LOGGER.error("No regex defined in tmpregex settings !")
+            else:
+                new_filename = self._rename_by_regex(new_filename, "tmp.zip", zip_regex)
+        else:
+            for idx, regex_instruction in enumerate(regex_settings):
+                reg = regex_instruction.get("pattern_in", None)
+                repl = regex_instruction.get("pattern_out", None)
 
-            if None not in (reg, repl):
-                new_filename = self._rename_by_regex(new_filename, reg, repl)
-            elif idx == 0:
-                LOGGER.error("No regex defined in fileregex1 settings !")
+                if None not in (reg, repl):
+                    new_filename = self._rename_by_regex(new_filename, reg, repl)
+                elif idx == 0:
+                    LOGGER.error("No regex defined in fileregex1 settings !")
 
         # update record with new filename
         with Database.get_app().app_context():
@@ -667,6 +700,9 @@ class DiffMetManager:
                 if diff_info["fileName"] != "":
                     etree.SubElement(element, prefix + "ftp_final_file_name").text = str(diff_info["fileName"])
                     etree.SubElement(element, prefix + "ftp_tmp_file_name").text = str(diff_info["fileName"]+ ".tmp")
+                elif self.original_filename == "tmp.zip":
+                    etree.SubElement(element, prefix + "ftp_final_file_name").text = self.new_filename
+                    etree.SubElement(element, prefix + "ftp_tmp_file_name").text = self.new_filename + ".tmp"
                 else:
                     etree.SubElement(element, prefix + "ftp_final_file_name").text = self.original_filename
                     etree.SubElement(element, prefix + "ftp_tmp_file_name").text = self.original_filename + ".tmp"
