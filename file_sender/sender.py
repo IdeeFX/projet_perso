@@ -5,6 +5,7 @@ import multiprocessing
 from multiprocessing.dummy import Pool as ThreadPool
 from distutils.util import strtobool
 import argparse
+import traceback
 import os
 from os import listdir
 from os.path import join, basename
@@ -17,6 +18,7 @@ from utils.const import SFTP_PARAMETERS, ENV, TIMEOUT, DEBUG_TIMEOUT
 from utils.tools import Tools
 from settings.settings_manager import SettingsManager, DebugSettingsManager
 from webservice.server.application import APP
+
 
 # initialize LOGGER
 setup_logging()
@@ -252,13 +254,18 @@ class DifmetSender:
             shutil.move(file_, cls.dir_c)
             LOGGER.debug("Moved file back from repertory %s to repertory %s",
                          cls.dir_d, cls.dir_c)
+        except Exception as exc:
+            trace = ''.join(traceback.format_exception(type(exc),
+                            exc, exc.__traceback__))
+            LOGGER.error("Error when uploading file %s with "
+                         "trace :\n %s", args[0], trace)
+
+            LOGGER.error()
         proc.terminate()
 
     @classmethod
     def upload_file(cls, file_):
         start = time()
-
-        # TODO exception are not thrown back
         connection_ok, ftp = cls.connect_ftp()
         if connection_ok:
             ftpdir = SettingsManager.get("dissFtpDir")

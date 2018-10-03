@@ -168,7 +168,7 @@ def test_harnais_complet():
 
 
         thr.start()
-        thr.join(80)
+        thr.join()
         # stopping file manager
         AckReceiver.stop()
         print("Ack_receiver success")
