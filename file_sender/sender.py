@@ -13,7 +13,7 @@ from setproctitle import setproctitle
 from ftplib import FTP, error_perm
 from utils.setup_tree import HarnessTree
 from utils.log_setup import setup_logging
-from utils.const import SCP_PARAMETERS
+from utils.const import SCP_PARAMETERS, ENV
 from utils.tools import Tools
 from settings.settings_manager import SettingsManager, DebugSettingsManager
 from webservice.server.application import APP
@@ -26,7 +26,7 @@ LOGGER.debug("Logging configuration set up in %s", __name__)
 LOGGER.info("Sender setup complete")
 
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 
@@ -42,14 +42,14 @@ class DifmetSender:
     def process(cls , max_loops=0):
         if not DEBUG:
             process_name = "harness_difmet_sender"
-            # TODO implement when multiprocessing gets reactivated
-            # pid_killed = Tools.kill_process(process_name)
-            # if pid_killed != []:
-            #     LOGGER.warning("Found a process %s already "
-            #                    "running with pid %i. Attempting"
-            #                    " to kill it.", process_name, pid)
-            # for pid in pid_killed:
-            #     LOGGER.info("Killed process %s with pid %i", process_name,pid)
+            pid_killed = Tools.kill_process(process_name)
+            if pid_killed != []:
+                LOGGER.warning("Found a process %s already "
+                               "running with pid %i. Attempting"
+                               " to kill before starting "
+                               "the new one", process_name, pid)
+            for pid in pid_killed:
+                LOGGER.info("Killed process %s with pid %i", process_name,pid)
             setproctitle(process_name)
         cls.nb_workers = SettingsManager.get("sendFTPlimitConn")
         # in debug mode, it is possible to set

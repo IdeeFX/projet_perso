@@ -19,19 +19,15 @@ from utils.log_setup import setup_logging
 from utils.setup_tree import HarnessTree
 from utils.database import Database, Diffusion
 from utils.const import (REQ_STATUS, SCP_PARAMETERS, DEBUG_TIMEOUT, PRIORITIES,
-                         MAX_REGEX, DEFAULT_ATTACHMENT_NAME)
+                         MAX_REGEX, DEFAULT_ATTACHMENT_NAME, ENV)
 from utils.tools import Tools, Incrementator
 from webservice.server.application import APP
 
 
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
-try:
-    TEST_SFTP = bool(strtobool(os.environ.get("MFSERV_HARNESS_TEST_SFTP") or "False"))
-except ValueError:
-    TEST_SFTP = False
 
 
 # initialize LOGGER
@@ -53,15 +49,15 @@ class FileManager:
     @classmethod
     def process(cls, max_loops=0):
         if not DEBUG:
-            process_name = "harness_file_manager"
-            # TODO implement when multiprocessing gets reactivated
-            # pid_killed = Tools.kill_process(process_name)
-            # if pid_killed != []:
-            #     LOGGER.warning("Found a process %s already "
-            #                    "running with pid %i. Attempting"
-            #                    " to kill it.", process_name, pid)
-            # for pid in pid_killed:
-            #     LOGGER.info("Killed process %s with pid %i", process_name,pid)
+            process_name = "harness_ack_receiver"
+            pid_killed = Tools.kill_process(process_name)
+            if pid_killed != []:
+                LOGGER.warning("Found a process %s already "
+                               "running with pid %i. Attempting"
+                               " to kill before starting "
+                               "the new one", process_name, pid)
+            for pid in pid_killed:
+                LOGGER.info("Killed process %s with pid %i", process_name,pid)
             setproctitle(process_name)
         counter = 0
         instr_to_process = False
@@ -320,9 +316,7 @@ class ConnectionPointer:
         # move the file if hostname is localhost. Sftp it otherwise
         # TODO prendre en considération Harnessdiss.synchro en 8.5
         files_fetched = []
-        if self.hostname == "localhost" and \
-           os.path.isdir(dir_path) and \
-           not TEST_SFTP:
+        if self.hostname == "localhost" and os.path.isdir(dir_path):
             for item in os.listdir(dir_path):
                 file_path = os.path.join(dir_path, item)
                 # folders are ignored
@@ -333,6 +327,8 @@ class ConnectionPointer:
                 # if the file has already been fetched by a previous instruction file,
                 # we don't do it again
                 if not os.path.isfile(destination_path):
+                    LOGGER.debug("Copying file from %s to %s.",
+                                  file_path, destination_path)
                     shutil.copy(file_path, destination_path)
                 self.update_filename(item)
                 files_fetched.append(file_path)
@@ -353,19 +349,17 @@ class ConnectionPointer:
         raise NotImplementedError
         return new_path
 
-    # @staticmethod
-    # def _scp_file(sftp, *args,**kwargs):
-    #         # ssh = paramiko.SSHClient()
-    #         # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    def _scp_file(self, dir_path, file_path, destination_path):
 
-    #         # ssh.connect(**kwargs)
-    #         # sftp = ssh.open_sftp()
-    #         sftp.get(*args)
-    #         # sftp.close()
-    #         # ssh.close()
+
+            transport = paramiko.Transport((self.hostname, self.port))
+            transport.connect(username=self.user, password=self.password)
+            sftp = paramiko.SFTPClient.from_transport(transport)
+            sftp.chdir(dir_path)
+            sftp.get(file_path, destination_path)
+            sftp.close()
 
     def scp_dir(self, dir_path, destination_dir):
-
 
         files_to_scp = []
         try:
@@ -380,7 +374,8 @@ class ConnectionPointer:
                 # if the file has already been fetched by a previous instruction file,
                 # we don't do it again
                 if os.path.isfile(destination_path):
-                    files_to_scp.append((file_path, destination_path))
+                    files_to_scp.append((dir_path, file_path, destination_path))
+                    LOGGER.debug("File %s already downloaded, moving on", file_path)
                     continue
                 mode = sftp.stat(file_path).st_mode
                 # ignore directories
@@ -399,9 +394,9 @@ class ConnectionPointer:
                 LOGGER.debug('file %s found on openwis staging post',
                              file_path
                              )
-                files_to_scp.append((file_path, destination_path))
+                files_to_scp.append((dir_path, file_path, destination_path))
 
-
+            sftp.close()
 
             # initialize the multiprocessing manager
             if DEBUG:
@@ -415,7 +410,7 @@ class ConnectionPointer:
             # TODO clean up
             # scp_files = partial(self._scp_file, **connection_info)
             # results = pool.starmap_async(scp_files, files_to_scp)
-            results = pool.starmap_async(sftp.get, files_to_scp)
+            results = pool.starmap_async(self._scp_file, files_to_scp)
             # compute timeout
             bandwidth = SettingsManager.get("bandwidth")
             if bandwidth in [None, 0]:
@@ -444,7 +439,7 @@ class ConnectionPointer:
                 scp_success = False
 
             # check download success and unzip if necessary then update database
-            for remote_path, local_path in files_to_scp:
+            for _, remote_path, local_path in files_to_scp:
                 if os.path.isfile(local_path):
                     LOGGER.debug('file %s downloaded in repertory %s',
                                  remote_path,
@@ -490,7 +485,7 @@ class ConnectionPointer:
         # update database
         files_downloaded = []
         if scp_success:
-            for  _, local_path in files_to_scp:
+            for  _, _, local_path in files_to_scp:
                 self.update_filename(os.path.basename(local_path))
                 files_downloaded.append(local_path)
 

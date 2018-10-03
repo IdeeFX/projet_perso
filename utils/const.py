@@ -46,18 +46,32 @@ PRIORITIES = PrioritiesScale(maximum=81,
 
 default_settings = namedtuple("DEFAULT_SETTINGS", ["diffFileName",
                                                    "sendFTPlimitConn",
+                                                   "delAck",
                                                    "fileEndLive"])
 
 # fileEndLive is one week by default 7*3600*24 s
+# delAck is one one week by default 7 *24
 DEFAULT_SETTINGS = default_settings(diffFileName="fr-meteo-harnaisdiss",
                                     sendFTPlimitConn=1,
+                                    delAck = 7*24,
                                     fileEndLive=6.048e+5)
 
-# should be in timedelta kwargs format
-# https://docs.python.org/release/3.5.2/library/datetime.html?highlight=timedelta#datetime.timedelta
-REFRESH_DATABASE_LIMIT = dict(days=5)
 
 # TODO check if it should be a parameter
 DEFAULT_ATTACHMENT_NAME = "meteo_france_product"
 
 MAX_REGEX = 20
+
+env = namedtuple("ENV", ["debug",
+                         "settings",
+                         "log_settings",
+                         "trash",
+                         "port",
+                         "soap_url"])
+
+ENV = env(debug = "MFSERV_HARNESS_DEBUG",
+          settings = "MFSERV_HARNESS_SETTINGS",
+          log_settings = "MFSERV_HARNESS_LOG_SETTINGS",
+          trash = "MFSERV_HARNESS_TRASH",
+          port = "MFSERV_NGINX_PORT",
+          soap_url = "MFSERV_HARNESS_SOAP_ADRESS")

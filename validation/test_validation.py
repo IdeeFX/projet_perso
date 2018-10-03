@@ -1,12 +1,12 @@
 import socket
 import os
 from zeep import Client
-from utils.const import PORT
+from utils.const import PORT, ENV
 from validation.mock_server.soap_server import SoapServer
 
 SoapServer.create_server()
 hostname = socket.gethostname()
-port = os.environ.get("MFSERV_NGINX_PORT") or PORT
+port = os.environ.get(ENV.port) or PORT
 client = Client('http://{hostname}:{port}/harnais-diss-v2/'
                 'webservice/Dissemination?wsdl'.format(hostname=hostname,
                                                        port=port))

@@ -4,10 +4,10 @@ import logging
 import tempfile
 from distutils.util import strtobool
 from settings.settings_manager import SettingsManager
-from utils.const import REPERTORY_TREE
+from utils.const import REPERTORY_TREE, ENV
 
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 

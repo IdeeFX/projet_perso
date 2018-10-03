@@ -9,7 +9,7 @@ from lxml import etree
 from distutils.util import strtobool
 from setproctitle import setproctitle
 from utils.setup_tree import HarnessTree
-from utils.const import REQ_STATUS
+from utils.const import REQ_STATUS, ENV
 from utils.log_setup import setup_logging
 from utils.tools import Tools
 from utils.database import Database, Diffusion
@@ -29,7 +29,7 @@ LOGGER.debug("Logging configuration set up in %s", __name__)
 LOGGER.info("Ack Receiver setup complete")
 # TODO move environment variables into utils.const
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 
@@ -43,14 +43,14 @@ class AckReceiver:
     def process(cls, max_loops=0):
         if not DEBUG:
             process_name = "harness_ack_receiver"
-            # TODO implement when multiprocessing gets reactivated
-            # pid_killed = Tools.kill_process(process_name)
-            # if pid_killed != []:
-            #     LOGGER.warning("Found a process %s already "
-            #                    "running with pid %i. Attempting"
-            #                    " to kill it.", process_name, pid)
-            # for pid in pid_killed:
-            #     LOGGER.info("Killed process %s with pid %i", process_name,pid)
+            pid_killed = Tools.kill_process(process_name)
+            if pid_killed != []:
+                LOGGER.warning("Found a process %s already "
+                               "running with pid %i. Attempting"
+                               " to kill before starting "
+                               "the new one", process_name, pid)
+            for pid in pid_killed:
+                LOGGER.info("Killed process %s with pid %i", process_name,pid)
             setproctitle(process_name)
         counter = 0
         if not cls._running:
@@ -174,6 +174,7 @@ class AckReceiver:
                     "email_adress"]
 
             if ack_type == "SEND" and status == "OK":
+                diff_success = True
                 cls.update_database_status(diff_success, req_id)
                 msg = ("DiffMet ack reports success for product %s "
                        "corresponding to request %s" %
@@ -181,7 +182,6 @@ class AckReceiver:
                        req_id))
                 LOGGER.info(msg)
                 cls.update_database_message(msg, req_id)
-                diff_success = True
             else:
                 ack_type_failure = ack_type
                 status_failure = status
@@ -220,12 +220,12 @@ class AckReceiver:
     @classmethod
     def update_database_status(cls, diff_success, diff_id):
 
-        if diff_success:
-            LOGGER.info("Diffmet reported that diffusion %s failed.")
+        if not diff_success:
+            LOGGER.info("Diffmet reported that diffusion %s failed.", diff_id)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=diff_id))
         else:
-            LOGGER.info("Diffmet reported that diffusion %s succeeded.")
+            LOGGER.info("Diffmet reported that diffusion %s succeeded.", diff_id)
             Database.update_field_by_query("requestStatus", REQ_STATUS.succeeded,
                                             **dict(fullrequestId=diff_id))
 
