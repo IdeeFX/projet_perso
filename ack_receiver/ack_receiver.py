@@ -212,11 +212,11 @@ class AckReceiver:
     def update_database_status(cls, diff_success, diff_id):
 
         if diff_success:
-            LOGGER.info("Diffmet reported that diffusion %s failed.")
+            LOGGER.info("Diffmet reported that diffusion %s failed.", diff_id)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=diff_id))
         else:
-            LOGGER.info("Diffmet reported that diffusion %s succeeded.")
+            LOGGER.info("Diffmet reported that diffusion %s succeeded.", diff_id)
             Database.update_field_by_query("requestStatus", REQ_STATUS.succeeded,
                                             **dict(fullrequestId=diff_id))
 
