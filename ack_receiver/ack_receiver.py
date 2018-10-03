@@ -42,7 +42,16 @@ class AckReceiver:
     @classmethod
     def process(cls, max_loops=0):
         if not DEBUG:
-            setproctitle("harness_ack_receiver")
+            process_name = "harness_ack_receiver"
+            pid_killed = Tools.kill_process(process_name)
+            if pid_killed != []:
+                LOGGER.warning("Found a process %s already "
+                               "running with pid %i. Attempting"
+                               " to kill before starting "
+                               "the new one", process_name, pid)
+            for pid in pid_killed:
+                LOGGER.info("Killed process %s with pid %i", process_name,pid)
+            setproctitle(process_name)
         counter = 0
         if not cls._running:
             LOGGER.info("Ack receiver is starting")
@@ -165,6 +174,7 @@ class AckReceiver:
                     "email_adress"]
 
             if ack_type == "SEND" and status == "OK":
+                diff_success = True
                 cls.update_database_status(diff_success, req_id)
                 msg = ("DiffMet ack reports success for product %s "
                        "corresponding to request %s" %
@@ -172,7 +182,6 @@ class AckReceiver:
                        req_id))
                 LOGGER.info(msg)
                 cls.update_database_message(msg, req_id)
-                diff_success = True
             else:
                 ack_type_failure = ack_type
                 status_failure = status
@@ -211,7 +220,7 @@ class AckReceiver:
     @classmethod
     def update_database_status(cls, diff_success, diff_id):
 
-        if diff_success:
+        if not diff_success:
             LOGGER.info("Diffmet reported that diffusion %s failed.", diff_id)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=diff_id))
