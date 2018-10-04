@@ -46,6 +46,7 @@ class SettingsManager:
                        processFileDPmax=None,
                        processFilesize=None,
                        keepFileTime=None,
+                       keepFileTimeSender=None,
                        bandwidth=None,
                        tmpregex=None,
                        sla=None,

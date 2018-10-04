@@ -27,6 +27,11 @@ except ValueError:
 LOGGER = None
 
 
+def launch_named_process(proc, name):
+    if not DEBUG:
+        setproctitle(name)
+    proc()
+
 def get_logger():
     SettingsManager.load_settings()
 
@@ -44,8 +49,8 @@ def launch(launch_logger=None, debug=True):
 
     def log_exception(exc, proc, i):
         log_list = [("file_sender.sender", logging.getLogger("file_sender.sender")),
-                ("file_manager.manager", logging.getLogger("file_manager.manager")),
-                ("ack_receiver.ack_receiver", logging.getLogger("ack_receiver.ack_receiver"))
+                    ("file_manager.manager", logging.getLogger("file_manager.manager")),
+                    ("ack_receiver.ack_receiver", logging.getLogger("ack_receiver.ack_receiver"))
                 ]
         log_name, logger = log_list[i]
         if exc is not None:
@@ -62,19 +67,22 @@ def launch(launch_logger=None, debug=True):
         launch_logger.info("Debug mode activated. Multiprocessing is done through threads "
                     " and not subprocess and is thus slower.")
     else:
-        # TODO fix multiprocessing
-        executor_class = ThreadPoolExecutor
-        # executor_class = ProcessPoolExecutor
+        executor_class = ProcessPoolExecutor
 
     process_status = [None]*3
     proc_list = [DifmetSender.process,
                  FileManager.process,
                  AckReceiver.process]
+    proc_names = ["harness_difmet_sender",
+                  "harness_file_manager",
+                  "harness_ack_receiver"]
 
     with executor_class(max_workers=len(process_status)) as executor:
         #launch the process
         for i, proc in enumerate(proc_list):
-            process_status[i] = executor.submit(proc)
+            proc_name = proc_names[i]
+            # process_status[i] = executor.submit(proc, **dict(process_name=proc_name))
+            process_status[i] = executor.submit(launch_named_process, *(proc, proc_name))
             launch_logger.info("Launching %s.", proc.__qualname__)
         #if one crashes, it get restarted
         while True:
@@ -84,18 +92,21 @@ def launch(launch_logger=None, debug=True):
                 if not status.running():
                     exc  = status.exception()
                     log_exception(exc, proc, i)
-                    process_status[i] = executor.submit(proc)
+                    proc_name = proc_names[i]
+                    process_status[i] = executor.submit(launch_named_process, *(proc, proc_name))
                     launch_logger.info("Function %s crashed, restarting.", proc.__qualname__)
 
             # we wait until an exception arises
             wait(process_status,return_when=FIRST_EXCEPTION)
 
 if __name__ == '__main__':
-    setproctitle("harness_service_launcher")
+
 
     res = Tools.get_pid("harness_service_launcher")
     if len(res) > 1:
         raise RuntimeError("harness_service_launcher already running.")
+
+    setproctitle("harness_service_launcher")
 
     logger = get_logger()
 
