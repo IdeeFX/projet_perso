@@ -16,21 +16,19 @@ try:
 except ValueError:
     DEBUG = False
 
+def change_log_dir(in_dict, log_dir):
+    for key in in_dict["handlers"].keys():
+        try:
+            original_path = in_dict["handlers"][key]["filename"]
+        except KeyError:
+            continue
+        new_path = join(log_dir, os.path.basename(original_path))
+        in_dict["handlers"][key]["filename"] = new_path
+
 def setup_logging(default_path=DEFAULT_PATH):
     """Setup logging configuration
 
     """
-
-    # TODO introduce an environment variable settings
-
-    def change_log_dir(in_dict, log_dir):
-        for key in in_dict["handlers"].keys():
-            try:
-                original_path = in_dict["handlers"][key]["filename"]
-            except KeyError:
-                continue
-            new_path = join(log_dir, os.path.basename(original_path))
-            in_dict["handlers"][key]["filename"] = new_path
 
     path = os.path.abspath(default_path)
     if os.path.exists(path):
@@ -44,7 +42,7 @@ def setup_logging(default_path=DEFAULT_PATH):
                             "directory.".format(v=log_dir))
             try:
                 os.mkdir(log_dir)
-            except (FileExistsError,PermissionError):
+            except (FileExistsError):
                 pass
         else:
             log_dir = SettingsManager.get("harnaisLogdir")

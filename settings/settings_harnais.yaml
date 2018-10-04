@@ -1,9 +1,9 @@
 harnais:
   # Chemin (relatif?) du répertoire des logs
   # TODO logdir nécessite redémarrage pour être pris en compte
-  logdir: /home/mdsi/davannefx/harnais/
+  logdir: /tmp/harnais/
   # Repertoire principal du harnais
-  dir: /home/mdsi/davannefx/harnais/
+  dir: /tmp/harnais/
   # Repertoire de réception des ack
   ackdir: /tmp/ack
   # Synchronisation en seconde entre le serveur
@@ -43,12 +43,18 @@ soapport:
 processFileIdle: 30
 # Nombre de fichiers de directives provisoire à traiter
 processFileDPmax: 10
+# Nombre de transferts SFTP concurrentiels vers le staging post
+getSFTPlimitConn: 1
 # Taille max (en Mega octet) des fichiers autorisés à être récupéré sur Openwis
 processFilesize: 1000
 # Durée de conservation des fichiers de directives provisoires (en seconde)
 keepfiletime: 14400
 # Durée de conservation des fichiers de directives provisoires (en seconde)
 keepfiletimeSender: 86400
+# Nb de fichiers d'instructions in dir_A à partir duquel un warning est envoyé
+ManagerOverflow:
+# Nb de fichiers d'archives in dir_C à partir duquel un warning est envoyé
+SenderOverflow:
 # Bande passante (mbits) estimée, permettant la gestion du timeout
 bandwidth:
 # Expression régulière à appliquer aux fichiers tmp.zip
@@ -66,18 +72,18 @@ fileregex3:
   pattern_in:
   pattern_out:
 # Si true on calcule la priorité sinon on utilisera la valeur 85 par défaut
-sla:
+sla: False
 # Durée de rétention (en heure) des acquittements dans la « table » d’acquittements.
 delAck:
 # Valeur par defaut de priorité à appliquer à une diffusion
-delfaultpriority: 1
+delfaultpriority: 85
 # Element de nommage du fichier de diffusion vers Difmet
 diffFileName:
 # Date de fin de vie d’un fichier en minute par rapport à l’heure système
 # pour le champ
 fileendlive:
 # Temps en seconde d’attente avant le traitement des archives difmet à expédier
-sendFTPIdle: 30
+sendFTPIdle:
 # Nombre de transferts FTP concurrentiels
 sendFTPlimitConn: 4
 #

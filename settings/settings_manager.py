@@ -44,9 +44,12 @@ class SettingsManager:
                        soapPort=None,
                        processFileIdle=None,
                        processFileDPmax=None,
+                       getSFTPlimitConn = DEFAULT_SETTINGS.getSFTPlimitConn,
                        processFilesize=None,
                        keepFileTime=None,
                        keepFileTimeSender=None,
+                       ManagerOverflow = None,
+                       SenderOverflow = None,
                        bandwidth=None,
                        tmpregex=None,
                        sla=None,
@@ -134,7 +137,7 @@ class SettingsManager:
         if checksum != cls._checksum:
             cls.load_settings()
 
-        return cls._parameters.get(key,alt)
+        return cls._parameters.get(key) or alt
 
     @classmethod
     def get_checksum(cls):

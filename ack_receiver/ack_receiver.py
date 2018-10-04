@@ -62,6 +62,8 @@ class AckReceiver:
     @classmethod
     def setup_process(cls):
         if not cls._running:
+            setup_logging()
+            LOGGER = logging.getLogger(__name__)
             LOGGER.info("Ack receiver process starting")
             # create tree structure if necessary
             HarnessTree.setup_tree()
@@ -232,21 +234,26 @@ class AckReceiver:
     def update_database_status(cls, diff_success, diff_id):
 
         if not diff_success:
-            LOGGER.info("Diffmet reported that diffusion %s failed.", diff_id)
+            msg = ("Diffmet reported that diffusion %s failed.", diff_id)
+            LOGGER.info(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=diff_id))
+            Database.update_field_by_query("message", msg,
+                                           **dict(fullrequestId=diff_id))
         else:
-            LOGGER.info("Diffmet reported that diffusion %s succeeded.", diff_id)
+            msg = ("Diffmet reported that diffusion %s succeeded." % diff_id)
+            LOGGER.info(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.succeeded,
                                             **dict(fullrequestId=diff_id))
-
+            Database.update_field_by_query("message", msg,
+                                           **dict(fullrequestId=diff_id))
     @classmethod
     def update_database_message(cls, message, diff_id):
 
         Database.update_field_by_query("message", message,
                                         **dict(fullrequestId=diff_id))
 
-if DEBUG and __name__ == '__main__':
+if __name__ == '__main__':
     process_name = "harness_ack_receiver"
     setproctitle(process_name)
 

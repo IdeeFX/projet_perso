@@ -31,9 +31,7 @@ SftpSettings = namedtuple("SFTP_PARAMETERS", ["timeout_buffer",
                                             "workers"]
                            )
 
-#TODO move to parameters
-SFTP_PARAMETERS = SftpSettings(timeout_buffer=10,
-                             workers=1)
+TIMEOUT_BUFFER = 1
 
 RANDOM_ID_LENGTH = 20
 
@@ -47,6 +45,7 @@ PRIORITIES = PrioritiesScale(maximum=81,
 
 default_settings = namedtuple("DEFAULT_SETTINGS", ["diffFileName",
                                                    "sendFTPlimitConn",
+                                                   "getSFTPlimitConn",
                                                    "delAck",
                                                    "fileEndLive"])
 
@@ -54,6 +53,7 @@ default_settings = namedtuple("DEFAULT_SETTINGS", ["diffFileName",
 # delAck is one one week by default 7 *24 h
 DEFAULT_SETTINGS = default_settings(diffFileName="fr-meteo-harnaisdiss",
                                     sendFTPlimitConn=1,
+                                    getSFTPlimitConn=1,
                                     delAck = 7*24,
                                     fileEndLive=10080)
 

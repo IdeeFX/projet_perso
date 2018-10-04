@@ -18,7 +18,7 @@ from settings.settings_manager import SettingsManager, DebugSettingsManager
 from utils.log_setup import setup_logging
 from utils.setup_tree import HarnessTree
 from utils.database import Database, Diffusion
-from utils.const import (REQ_STATUS, SFTP_PARAMETERS, DEBUG_TIMEOUT, TIMEOUT,
+from utils.const import (REQ_STATUS, TIMEOUT_BUFFER, DEBUG_TIMEOUT, TIMEOUT,
                         PRIORITIES, MAX_REGEX, DEFAULT_ATTACHMENT_NAME, ENV)
 from utils.tools import Tools, Incrementator
 from webservice.server.application import APP
@@ -51,9 +51,6 @@ class FileManager:
 
     @classmethod
     def process(cls, max_loops=0):
-        if not DEBUG:
-            process_name = "harness_file_manager"
-            setproctitle(process_name)
         counter = 0
         instr_to_process = False
         cls.setup_process()
@@ -168,6 +165,8 @@ class FileManager:
     @classmethod
     def setup_process(cls):
         if not cls._running:
+            setup_logging()
+            LOGGER = logging.getLogger(__name__)
             LOGGER.info("File manager process starting")
             # create tree structure if necessary
             HarnessTree.setup_tree()
@@ -204,15 +203,20 @@ class FileManager:
         cls._running = False
 
 
-    @staticmethod
-    def get_file_list(dirname, maxfiles):
+    @classmethod
+    def get_file_list(cls, dirname, maxfiles):
+
+        overflow = SettingsManager.get("ManagerOverflow")
 
         list_entries = os.listdir(dirname)
         list_entries = [os.path.join(dirname, entry) for entry in list_entries]
         list_files = [
             entry for entry in list_entries if not os.path.isdir(entry)]
         list_files.sort(key=lambda x: os.stat(x).st_mtime)
-
+        if overflow is not None and len(list_files) > overflow:
+            LOGGER.error("%s repertory is overflowing. "
+                         "Number of files %i over the limit %i",
+                         cls.dir_a, len(list_files), overflow)
         list_files = list_files[:maxfiles]
 
         return list_files
@@ -255,11 +259,14 @@ class FileManager:
 
         file_expired = cls.check_file_age(file_to_process)
         if file_expired:
-            LOGGER.warning("%s instruction file discarded "
-                           "because it is over expiration date "
-                           "according to keepfiletime settings "
-                           "parameter", file_to_process)
+            msg = ("%s instruction file discarded "
+                   "because it is over expiration date "
+                   "according to keepfiletime settings "
+                   "parameter" % file_to_process)
+            LOGGER.warning(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
+                                           **dict(fullrequestId=full_id))
+            Database.update_field_by_query("message", msg,
                                            **dict(fullrequestId=full_id))
         else:
             # get URI
@@ -279,11 +286,10 @@ class FileManager:
                     Tools.remove_file(file_to_process, "instruction", LOGGER)
                 else:
                     shutil.move(file_to_process, cls.dir_a)
-
-            # TODO check with benjamin that we are not moving files TWICE
-            # else:
-            #     # moving instruction file to B repertory
-            #     shutil.move(file_to_process, cls.dir_b)
+            else:
+                msg = "Instruction file processed"
+                Database.update_field_by_query("message", msg,
+                                **dict(fullrequestId=full_id))
 
         return processed, info_file, files_fetched
 
@@ -366,9 +372,12 @@ class ConnectionPointer:
                 files_fetched.append(file_path)
             fetch_ok = True
         elif self.hostname == "localhost" and not os.path.isdir(dir_path):
-            LOGGER.error("Staging post path %s is not a directory. "
-                         "Dissemination failed", dir_path)
+            msg = ("Staging post path %s is not a directory. "
+                   "Dissemination failed" % dir_path)
+            LOGGER.error(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
+                                           **dict(fullrequestId=self.req_id))
+            Database.update_field_by_query("message", msg,
                                            **dict(fullrequestId=self.req_id))
             fetch_ok = False
         else:
@@ -429,10 +438,12 @@ class ConnectionPointer:
             transport.close()
 
             # initialize the multiprocessing manager
+            nb_workers = SettingsManager.get("getSFTPlimitConn")
             if DEBUG:
-                pool = DebugSettingsManager.sftp_pool(processes=SFTP_PARAMETERS.workers)
+                pool = DebugSettingsManager.sftp_pool(processes=nb_workers)
             else:
-                pool = multiprocessing.Pool(processes=SFTP_PARAMETERS.workers)
+
+                pool = multiprocessing.Pool(processes=nb_workers)
             results = pool.starmap_async(self._sftp_file, files_to_sftp)
 
             timeout = self.compute_timeout(required_bandwith)
@@ -460,22 +471,24 @@ class ConnectionPointer:
             LOGGER.exception("Couldn't connect to %s", self.hostname)
             sftp_success = False
         except FileOverSizeLimit:
-            LOGGER.exception('file %s found on openwis staging post'
-                'is over the size limit %f. Dissemination '
-                'failed',
-                file_path,
-                max_size
-                )
+            msg = ('file %s found on openwis staging post'
+                   'is over the size limit %f. Dissemination '
+                   'failed' % (file_path, max_size))
+            LOGGER.exception(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=self.req_id))
+            Database.update_field_by_query("message", msg,
+                                           **dict(fullrequestId=self.req_id))
             sftp_success = False
         except FileNotFoundError:
-            LOGGER.exception('Incorrect path %s for openwis staging post'
-                'Dissemination failed',
-                dir_path
-                )
+            msg = ('Incorrect path %s for openwis staging post'
+                   'Dissemination failed' % dir_path)
+
+            LOGGER.exception(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=self.req_id))
+            Database.update_field_by_query("message", msg,
+                                **dict(fullrequestId=self.req_id))
             sftp_success = False
 
 
@@ -518,7 +531,7 @@ class ConnectionPointer:
             LOGGER.debug("Sftp debug timeout set to %s s", timeout)
         else:
             # conversion in Mbits/s with shift_expr << operator
-            timeout = required_bandwith/bandwidth*1 << 17*SFTP_PARAMETERS.timeout_buffer
+            timeout = required_bandwith/bandwidth*1 << 17*TIMEOUT_BUFFER
             LOGGER.debug("Sftp timeout computed to %s s", timeout)
         # start download
 
@@ -642,6 +655,7 @@ class DiffMetManager:
         with Database.get_app().app_context():
             records = Diffusion.query.filter_by(final_file=self.new_filename).all()
         self.update_database(records, "rxnotif", False)
+        self.update_database(records, "message", "File packaged in tar.gz format")
 
     @staticmethod
     def update_database(records, key, value):
@@ -656,13 +670,18 @@ class DiffMetManager:
 
     def _get_priority(self):
 
-        #TODO mettre en valeur constante
-        priority_list = []
-        for req_id in self.instructions.keys():
-            priority = self._get_instr(req_id, "diffpriority")
-            priority_list.append(priority)
+        donot_compute_priority = SettingsManager.get("sla")
+        default_priority = SettingsManager.get("delfaultPriority", PRIORITIES.default)
 
-        highest_priority = min(priority_list + [PRIORITIES.default])
+        if donot_compute_priority:
+            highest_priority = default_priority
+        else:
+            priority_list = []
+            for req_id in self.instructions.keys():
+                priority = self._get_instr(req_id, "diffpriority")
+                priority_list.append(priority)
+
+            highest_priority = min(priority_list + [default_priority])
 
         return highest_priority
 
@@ -705,8 +724,7 @@ class DiffMetManager:
 
         return res
 
-    @staticmethod
-    def diff_info_to_xml(element,diff_info,prefix=""):
+    def diff_info_to_xml(self, element,diff_info,prefix=""):
         def bin_bool(in_boolean):
             return str(int(in_boolean))
 
@@ -807,7 +825,7 @@ class DiffMetManager:
         return path_to_file
 
 
-if DEBUG and __name__ == '__main__':
+if __name__ == '__main__':
 
     process_name = "harness_file_manager"
     setproctitle(process_name)
