@@ -1,10 +1,11 @@
 harnais:
   # Chemin (relatif?) du répertoire des logs
+  # TODO logdir nécessite redémarrage pour être pris en compte
   logdir: /home/mdsi/davannefx/harnais/
   # Repertoire principal du harnais
   dir: /home/mdsi/davannefx/harnais/
   # Repertoire de réception des ack
-  ackdir: /data/dif_wis_harnais2_int/Harness/
+  ackdir: /tmp/ack
   # Synchronisation en seconde entre le serveur
   # actif et passif, si valeur à 0 indique qu’il n’y a pas de serveur passif.
   synchro:
@@ -39,13 +40,15 @@ diss:
 # Port soap d’écoute du harnais
 soapport:
 # Temps en seconde d’attente avant le traitement des fichiers de directives temporaires.
-processFileIdle: 10
+processFileIdle: 30
 # Nombre de fichiers de directives provisoire à traiter
-processFileDPmax:
+processFileDPmax: 10
 # Taille max (en Mega octet) des fichiers autorisés à être récupéré sur Openwis
-processFilesize:
+processFilesize: 1000
 # Durée de conservation des fichiers de directives provisoires (en seconde)
-keepfiletime:
+keepfiletime: 14400
+# Durée de conservation des fichiers de directives provisoires (en seconde)
+keepfiletimeSender: 86400
 # Bande passante (mbits) estimée, permettant la gestion du timeout
 bandwidth:
 # Expression régulière à appliquer aux fichiers tmp.zip
@@ -71,9 +74,10 @@ delfaultpriority: 1
 # Element de nommage du fichier de diffusion vers Difmet
 diffFileName:
 # Date de fin de vie d’un fichier en minute par rapport à l’heure système
+# pour le champ
 fileendlive:
 # Temps en seconde d’attente avant le traitement des archives difmet à expédier
-sendFTPIdle: 10
+sendFTPIdle: 30
 # Nombre de transferts FTP concurrentiels
 sendFTPlimitConn: 4
 #

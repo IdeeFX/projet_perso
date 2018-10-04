@@ -41,9 +41,6 @@ class AckReceiver:
 
     @classmethod
     def process(cls, max_loops=0):
-        if not DEBUG:
-            process_name = "harness_ack_receiver"
-            setproctitle(process_name)
         counter = 0
         cls.setup_process()
         while cls._running:
@@ -250,6 +247,8 @@ class AckReceiver:
                                         **dict(fullrequestId=diff_id))
 
 if DEBUG and __name__ == '__main__':
+    process_name = "harness_ack_receiver"
+    setproctitle(process_name)
 
     parser = argparse.ArgumentParser(description='Ack receiver process loop.')
 

@@ -42,9 +42,6 @@ class DifmetSender:
 
     @classmethod
     def process(cls , max_loops=0):
-        if not DEBUG:
-            process_name = "harness_difmet_sender"
-            setproctitle(process_name)
         cls.nb_workers = SettingsManager.get("sendFTPlimitConn")
         # in debug mode, it is possible to set
         pool_method = cls.get_pool_method()
@@ -287,7 +284,8 @@ class DifmetSender:
         return upload_ok, time() - start
 
 if DEBUG and __name__ == '__main__':
-
+    process_name = "harness_difmet_sender"
+    setproctitle(process_name)
     parser = argparse.ArgumentParser(description='File sender process loop.')
 
     parser.add_argument("--loops", help=("How many loops should the process "

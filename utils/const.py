@@ -50,12 +50,12 @@ default_settings = namedtuple("DEFAULT_SETTINGS", ["diffFileName",
                                                    "delAck",
                                                    "fileEndLive"])
 
-# fileEndLive is one week by default 7*3600*24 s
-# delAck is one one week by default 7 *24
+# fileEndLive is one week by default 7*60*24 min
+# delAck is one one week by default 7 *24 h
 DEFAULT_SETTINGS = default_settings(diffFileName="fr-meteo-harnaisdiss",
                                     sendFTPlimitConn=1,
                                     delAck = 7*24,
-                                    fileEndLive=6.048e+5)
+                                    fileEndLive=10080)
 
 
 # TODO check if it should be a parameter

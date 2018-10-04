@@ -37,8 +37,6 @@ Database.initialize_database(APP)
 LOGGER.info("setup complete")
 
 def main():
-    setproctitle("harness_soap_server")
-
     hostname = socket.gethostname()
     port = os.environ.get(ENV.port) or PORT
     LOGGER.warning("Starting application through Flask development server."
@@ -52,5 +50,6 @@ def main():
     # A possible fix is there https://github.com/arskom/spyne/pull/572
 
 if __name__ == '__main__':
+    setproctitle("harness_soap_server")
     main()
 

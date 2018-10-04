@@ -809,6 +809,8 @@ class DiffMetManager:
 
 if DEBUG and __name__ == '__main__':
 
+    process_name = "harness_file_manager"
+    setproctitle(process_name)
     parser = argparse.ArgumentParser(description='File Manager process loop.')
 
     parser.add_argument("--loops", help=("How many loops should the process "

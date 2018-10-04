@@ -29,7 +29,7 @@ class FTPserver:
 
 
     def start_server(deposit_repertory):
-        setproctitle("diffmet_test_ftp_server")
+
         # Instantiate a dummy authorizer for managing 'virtual' users
         authorizer = DummyAuthorizer()
 
@@ -68,7 +68,7 @@ class FTPserver:
         cls._process.join(timeout=t)
 
 if __name__ == '__main__':
-
+    setproctitle("diffmet_test_ftp_server")
     try:
         FTPserver.create_server(gettempdir())
         FTPserver.wait()
