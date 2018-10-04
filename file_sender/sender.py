@@ -40,47 +40,6 @@ class DifmetSender:
     dir_d = None
     nb_workers = None
 
-    @staticmethod
-    def get_pool_method():
-        if DEBUG:
-            pool_method = DebugSettingsManager.ftp_pool
-        else:
-            pool_method = Pool
-
-        return pool_method
-
-    @classmethod
-    def setup_process(cls):
-        if not cls._running:
-            LOGGER.info("Sender process starting")
-            # create tree structure if necessary
-            HarnessTree.setup_tree()
-            cls._running = True
-
-    @staticmethod
-    def signal_loop(counter):
-        if counter % 10 ==0:
-            LOGGER.debug("Sender process is running. "
-                         "Loop number %i", counter)
-
-    @staticmethod
-    def load_settings():
-        loaded = SettingsManager.load_settings()
-        if loaded:
-            LOGGER.debug("Settings loaded")
-
-    @classmethod
-    def update_workers(cls):
-        # update the number of workers if necessary
-        nbw = SettingsManager.get("sendFTPlimitConn")
-        if nbw != cls.nb_workers:
-            #wait for every upload to be finished
-            cls.pool.close()
-            cls.pool.join()
-            #update workers
-            cls.nb_workers = nbw
-            cls.pool = pool_method(processes=nbw)
-
     @classmethod
     def process(cls , max_loops=0):
         if not DEBUG:
@@ -132,6 +91,50 @@ class DifmetSender:
             if counter == max_loops:
                 LOGGER.info("Performed required %i loops, exiting.", counter)
                 cls.stop()
+
+    @staticmethod
+    def get_pool_method():
+        if DEBUG:
+            pool_method = DebugSettingsManager.ftp_pool
+        else:
+            pool_method = Pool
+
+        return pool_method
+
+    @classmethod
+    def setup_process(cls):
+        if not cls._running:
+            LOGGER.info("Sender process starting")
+            # create tree structure if necessary
+            HarnessTree.setup_tree()
+            cls._running = True
+
+    @staticmethod
+    def signal_loop(counter):
+        if counter % 10 ==0:
+            LOGGER.debug("Sender process is running. "
+                         "Loop number %i", counter)
+            if DEBUG:
+                LOGGER.warning("DEBUG mode activated.")
+
+    @staticmethod
+    def load_settings():
+        loaded = SettingsManager.load_settings()
+        if loaded:
+            LOGGER.debug("Settings loaded")
+
+    @classmethod
+    def update_workers(cls):
+        # update the number of workers if necessary
+        nbw = SettingsManager.get("sendFTPlimitConn")
+        if nbw != cls.nb_workers:
+            #wait for every upload to be finished
+            cls.pool.close()
+            cls.pool.join()
+            #update workers
+            cls.nb_workers = nbw
+            cls.pool = pool_method(processes=nbw)
+
 
     @staticmethod
     def compute_timeout(required_bandwith):

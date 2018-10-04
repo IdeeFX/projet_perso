@@ -156,6 +156,8 @@ class FileManager:
         if counter % 10 ==0:
             LOGGER.debug("File manager process is running. "
                             "Loop number %i", counter)
+            if DEBUG:
+                LOGGER.warning("DEBUG mode activated.")
 
     @staticmethod
     def load_settings():
