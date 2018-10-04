@@ -45,52 +45,75 @@ class AckReceiver:
             process_name = "harness_ack_receiver"
             setproctitle(process_name)
         counter = 0
-        if not cls._running:
-            LOGGER.info("Ack receiver is starting")
-            # create tree structure if necessary
-            HarnessTree.setup_tree()
-            #connect the database
-            Database.initialize_database(APP)
-            cls._running = True
+        cls.setup_process()
         while cls._running:
             counter += 1
-            if counter % 10 ==0:
-                LOGGER.debug("Ack receiver is running. "
-                             "Loop number %i", counter)
-            loaded = SettingsManager.load_settings()
-            if loaded:
-                LOGGER.debug("Settings loaded")
+            cls.signal_loop(counter)
+            cls.load_settings()
             # TODO check default value
             idle_time = SettingsManager.get("sendFTPIdle") or 10
             sleep(idle_time)
-
-
             cls.dir_ack = dir_ack = HarnessTree.get("dir_ack")
 
-            for file_ in listdir(dir_ack):
-                file_path = join(dir_ack, file_)
-                ack_file = re.match(r".*.acqdifmet.xml$", file_)
-                if ack_file is None:
-                    continue
-                LOGGER.debug("Processing difmet ack file %s.", file_)
-                diss_success, req_id = cls.get_ack(file_path)
-                Tools.remove_file(file_path, "difmet ack", LOGGER)
-
-            for file_ in listdir(dir_ack):
-                file_path = join(dir_ack, file_)
-                alarme_file = re.match(r".*.errdifmet.xml$", file_)
-                if alarme_file is None:
-                    continue
-                LOGGER.debug("Processing difmet alarm file %s.", file_)
-                alarm_msg, req_id = cls.get_alarm(file_path)
-                if req_id is not None:
-                    cls.update_database_status(alarm_msg)
-                Tools.remove_file(file_path, "difmet alarm", LOGGER)
+            cls.process_ack_files(dir_ack)
+            cls.process_alarm_files(dir_ack)
 
             if counter == max_loops:
                 LOGGER.info("Performed required %i loops, exiting.", counter)
                 cls.stop()
 
+    @classmethod
+    def setup_process(cls):
+        if not cls._running:
+            LOGGER.info("Ack receiver process starting")
+            # create tree structure if necessary
+            HarnessTree.setup_tree()
+            #connect the database
+            Database.initialize_database(APP)
+            cls._running = True
+
+    @staticmethod
+    def signal_loop(counter):
+        if counter % 10 ==0:
+            LOGGER.debug("Ack receiver is running. "
+                         "Loop number %i", counter)
+            if DEBUG:
+                LOGGER.warning("DEBUG mode activated.")
+
+    @staticmethod
+    def load_settings():
+        loaded = SettingsManager.load_settings()
+        if loaded:
+            LOGGER.debug("Settings loaded")
+
+    @staticmethod
+    def check_ack_dir(dir_ack):
+        if not os.path.isdir(dir_ack):
+            LOGGER.error("Ack dir %s is not a repertory %s", dir_ack)
+            raise NotADirectoryError
+
+
+    @classmethod
+    def process_ack_files(cls, dir_ack):
+        for file_ in listdir(dir_ack):
+            file_path = join(dir_ack, file_)
+            ack_file = re.match(r".*.acqdifmet.xml$", file_)
+            if ack_file is None:
+                continue
+            LOGGER.debug("Processing difmet ack file %s.", file_)
+            cls.get_ack(file_path)
+            Tools.remove_file(file_path, "difmet ack", LOGGER)
+
+    @classmethod
+    def process_alarm_files(cls, dir_ack):
+        for file_ in listdir(dir_ack):
+            file_path = join(dir_ack, file_)
+            alarme_file = re.match(r".*.errdifmet.xml$", file_)
+            if alarme_file is None:
+                continue
+            LOGGER.debug("Processing difmet alarm file %s.", file_)
+            cls.get_alarm(file_path)
+            Tools.remove_file(file_path, "difmet alarm", LOGGER)
 
     @classmethod
     def stop(cls):
@@ -131,8 +154,8 @@ class AckReceiver:
         for handler in LOGGER_ALARM.handlers:
             LOGGER.info("Logged an alarm message into "
                         "log file %s", handler.baseFilename)
-
-        return alarm_msg, req_id
+        if req_id is not None:
+            cls.update_database_status(alarm_msg)
 
 
     @classmethod
@@ -207,7 +230,6 @@ class AckReceiver:
             LOGGER.error("Couldn't retrieve dissemination requestId "
                          "from external_id %s", diff_external_id)
 
-        return diff_success, req_id
 
     @classmethod
     def update_database_status(cls, diff_success, diff_id):
