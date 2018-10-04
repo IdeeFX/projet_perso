@@ -204,15 +204,20 @@ class FileManager:
         cls._running = False
 
 
-    @staticmethod
-    def get_file_list(dirname, maxfiles):
+    @classmethod
+    def get_file_list(cls, dirname, maxfiles):
+
+        overflow = SettingsManager.get("ManagerOverflow")
 
         list_entries = os.listdir(dirname)
         list_entries = [os.path.join(dirname, entry) for entry in list_entries]
         list_files = [
             entry for entry in list_entries if not os.path.isdir(entry)]
         list_files.sort(key=lambda x: os.stat(x).st_mtime)
-
+        if overflow is not None and len(list_files) > overflow:
+            LOGGER.error("%s repertory is overflowing. "
+                         "Number of files %i over the limit %i",
+                         cls.dir_a, len(list_files), overflow)
         list_files = list_files[:maxfiles]
 
         return list_files
@@ -286,11 +291,6 @@ class FileManager:
                 msg = "Instruction file processed"
                 Database.update_field_by_query("message", msg,
                                 **dict(fullrequestId=full_id))
-
-            # TODO check with benjamin that we are not moving files TWICE
-            # else:
-            #     # moving instruction file to B repertory
-            #     shutil.move(file_to_process, cls.dir_b)
 
         return processed, info_file, files_fetched
 
@@ -669,13 +669,17 @@ class DiffMetManager:
 
     def _get_priority(self):
 
-        #TODO mettre en valeur constante
-        priority_list = []
-        for req_id in self.instructions.keys():
-            priority = self._get_instr(req_id, "diffpriority")
-            priority_list.append(priority)
+        donot_compute_priority = SettingsManager.get("sla")
 
-        highest_priority = min(priority_list + [PRIORITIES.default])
+        if donot_compute_priority:
+            highest_priority = PRIORITIES.default
+        else:
+            priority_list = []
+            for req_id in self.instructions.keys():
+                priority = self._get_instr(req_id, "diffpriority")
+                priority_list.append(priority)
+
+            highest_priority = min(priority_list + [PRIORITIES.default])
 
         return highest_priority
 

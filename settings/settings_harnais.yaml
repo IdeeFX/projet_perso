@@ -49,6 +49,10 @@ processFilesize: 1000
 keepfiletime: 14400
 # Durée de conservation des fichiers de directives provisoires (en seconde)
 keepfiletimeSender: 86400
+# Nb de fichiers d'instructions in dir_A à partir duquel un warning est envoyé
+ManagerOverflow:
+# Nb de fichiers d'archives in dir_C à partir duquel un warning est envoyé
+SenderOverflow:
 # Bande passante (mbits) estimée, permettant la gestion du timeout
 bandwidth:
 # Expression régulière à appliquer aux fichiers tmp.zip
@@ -66,7 +70,7 @@ fileregex3:
   pattern_in:
   pattern_out:
 # Si true on calcule la priorité sinon on utilisera la valeur 85 par défaut
-sla:
+sla: False
 # Durée de rétention (en heure) des acquittements dans la « table » d’acquittements.
 delAck:
 # Valeur par defaut de priorité à appliquer à une diffusion

@@ -72,6 +72,13 @@ class DifmetSender:
             files_to_ftp = cls.move_files(list_files_c, dir_d)
 
             for file_ in files_to_ftp:
+
+                file_expired = cls.check_file_age(file_)
+                if file_expired:
+                    # TODO we need to find a way to update the info to the database
+                    # would require looking at the file compressed though
+                    Tools.remove_file(file_, "difmet archive", LOGGER)
+                    continue
                 size = os.stat(file_)
 
                 timeout= cls.compute_timeout(size)
@@ -83,8 +90,6 @@ class DifmetSender:
                 res = cls.pool.apply_async(cls.abortable_ftp,
                                             (cls.upload_file, file_),
                                             dict(timeout=timeout))
-                if DEBUG:
-                    res.wait()
             if counter == max_loops:
                 LOGGER.info("Performed required %i loops, exiting.", counter)
                 cls.stop()
@@ -97,6 +102,16 @@ class DifmetSender:
             pool_method = Pool
 
         return pool_method
+
+    @staticmethod
+    def check_file_age(filename):
+        time_limit = SettingsManager.get("keepFileTimeSender") or None
+        if time_limit is not None:
+            check = (time() - os.stat(filename).st_mtime) > time_limit
+        else:
+            check = False
+        return check
+
 
     @classmethod
     def setup_process(cls):
@@ -161,16 +176,20 @@ class DifmetSender:
         cls._running = False
 
 
-    @staticmethod
-    def get_file_list(dirname, maxfiles):
+    @classmethod
+    def get_file_list(cls, dirname, maxfiles):
+
+        overflow = SettingsManager.get("SenderOverflow")
 
         list_entries = os.listdir(dirname)
         list_entries = [os.path.join(dirname, entry) for entry in list_entries]
         # sort by date
         list_files = [e for e in list_entries if not os.path.isdir(e)]
-        # TODO sort by priority
         list_files.sort(key=lambda x: os.stat(x).st_mtime)
-
+        if overflow is not None and len(list_files) > overflow:
+            LOGGER.error("%s repertory is overflowing. "
+                         "Number of files %i over the limit %i",
+                         cls.dir_c, len(list_files), overflow)
         list_files = list_files[:maxfiles]
 
         return list_files

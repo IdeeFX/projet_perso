@@ -47,6 +47,8 @@ class SettingsManager:
                        processFilesize=None,
                        keepFileTime=None,
                        keepFileTimeSender=None,
+                       ManagerOverflow = None,
+                       SenderOverflow = None,
                        bandwidth=None,
                        tmpregex=None,
                        sla=None,
