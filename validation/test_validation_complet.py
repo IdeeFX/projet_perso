@@ -6,6 +6,8 @@ from zeep import Client
 # from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from threading import Thread
 from time import sleep
+from shutil import rmtree
+from distutils.util import strtobool
 from tempfile import TemporaryDirectory, gettempdir
 from validation.mock_server.soap_server import SoapServer
 from validation.mock_server.difmet_ftp import FTPserver
@@ -21,11 +23,40 @@ from utils.const import PORT, ENV
 from utils.tools import Tools
 from utils.database import Database
 
+os.environ[ENV.debug] = "False"
+# DebugSettingsManager.sftp_pool = Pool
+# DebugSettingsManager.ftp_pool = Pool
+
+
+
+try:
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
+except ValueError:
+    DEBUG = False
+
 def clear_dir(dir_):
     for item in os.listdir(dir_):
         os.remove(join(dir_, item))
 
 def test_harnais_complet():
+
+    harnais_dir = join(gettempdir(), "harnais")
+
+    if os.path.isdir(harnais_dir):
+        rmtree(harnais_dir)
+        os.mkdir(harnais_dir)
+    else:
+        os.mkdir(harnais_dir)
+
+    SettingsManager.load_settings()
+    SettingsManager.update(dict(harnaisLogdir=harnais_dir,
+                                harnaisDir=harnais_dir,
+                                harnaisAckDir=harnais_dir
+                                ),
+                           testing=True)
+
+
+
     Tools.clear_trash_can()
     Database.initialize_database(APP)
     Database.refresh(**{"seconds":0})
@@ -75,7 +106,7 @@ def test_harnais_complet():
                                     openwisSftpPort = 3373
                                     ),
                                 testing=True)
-        # DebugSettingsManager.sftp_pool = Pool
+        DebugSettingsManager.sftp_pool = Pool
         thr = Thread(target=FileManager.process, kwargs={"max_loops":1})
         thr.start()
 
@@ -90,7 +121,6 @@ def test_harnais_complet():
             SFTPserver.stop_server()
     sleep(10)
     with TemporaryDirectory(prefix="diffmet_") as deposit:
-        DebugSettingsManager.ftp_pool = ThreadPool
 
         Tools.kill_process("diffmet_test_ftp_server")
         FTPserver.create_server("/")
@@ -103,7 +133,7 @@ def test_harnais_complet():
                                     sendFTPlimitConn=5
                                     ),
                                 testing=True)
-        thr = Thread(target=DifmetSender.process, kwargs={"max_loops":2})
+        thr = Thread(target=DifmetSender.process, kwargs={"max_loops":3})
 
         try:
             thr.start()

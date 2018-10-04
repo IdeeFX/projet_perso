@@ -18,7 +18,7 @@ from settings.settings_manager import SettingsManager, DebugSettingsManager
 from utils.log_setup import setup_logging
 from utils.setup_tree import HarnessTree
 from utils.database import Database, Diffusion
-from utils.const import (REQ_STATUS, SFTP_PARAMETERS, DEBUG_TIMEOUT, TIMEOUT,
+from utils.const import (REQ_STATUS, TIMEOUT_BUFFER, DEBUG_TIMEOUT, TIMEOUT,
                         PRIORITIES, MAX_REGEX, DEFAULT_ATTACHMENT_NAME, ENV)
 from utils.tools import Tools, Incrementator
 from webservice.server.application import APP
@@ -51,9 +51,6 @@ class FileManager:
 
     @classmethod
     def process(cls, max_loops=0):
-        if not DEBUG:
-            process_name = "harness_file_manager"
-            setproctitle(process_name)
         counter = 0
         instr_to_process = False
         cls.setup_process()
@@ -168,6 +165,8 @@ class FileManager:
     @classmethod
     def setup_process(cls):
         if not cls._running:
+            setup_logging()
+            LOGGER = logging.getLogger(__name__)
             LOGGER.info("File manager process starting")
             # create tree structure if necessary
             HarnessTree.setup_tree()
@@ -379,7 +378,7 @@ class ConnectionPointer:
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                            **dict(fullrequestId=self.req_id))
             Database.update_field_by_query("message", msg,
-                                           **dict(fullrequestId=full_id))
+                                           **dict(fullrequestId=self.req_id))
             fetch_ok = False
         else:
             fetch_ok, files_fetched = self.sftp_dir(dir_path, destination_dir)
@@ -439,10 +438,12 @@ class ConnectionPointer:
             transport.close()
 
             # initialize the multiprocessing manager
+            nb_workers = SettingsManager.get("getSFTPlimitConn")
             if DEBUG:
-                pool = DebugSettingsManager.sftp_pool(processes=SFTP_PARAMETERS.workers)
+                pool = DebugSettingsManager.sftp_pool(processes=nb_workers)
             else:
-                pool = multiprocessing.Pool(processes=SFTP_PARAMETERS.workers)
+
+                pool = multiprocessing.Pool(processes=nb_workers)
             results = pool.starmap_async(self._sftp_file, files_to_sftp)
 
             timeout = self.compute_timeout(required_bandwith)
@@ -477,7 +478,7 @@ class ConnectionPointer:
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=self.req_id))
             Database.update_field_by_query("message", msg,
-                                           **dict(fullrequestId=full_id))
+                                           **dict(fullrequestId=self.req_id))
             sftp_success = False
         except FileNotFoundError:
             msg = ('Incorrect path %s for openwis staging post'
@@ -487,7 +488,7 @@ class ConnectionPointer:
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=self.req_id))
             Database.update_field_by_query("message", msg,
-                                **dict(fullrequestId=full_id))
+                                **dict(fullrequestId=self.req_id))
             sftp_success = False
 
 
@@ -530,7 +531,7 @@ class ConnectionPointer:
             LOGGER.debug("Sftp debug timeout set to %s s", timeout)
         else:
             # conversion in Mbits/s with shift_expr << operator
-            timeout = required_bandwith/bandwidth*1 << 17*SFTP_PARAMETERS.timeout_buffer
+            timeout = required_bandwith/bandwidth*1 << 17*TIMEOUT_BUFFER
             LOGGER.debug("Sftp timeout computed to %s s", timeout)
         # start download
 
@@ -670,16 +671,17 @@ class DiffMetManager:
     def _get_priority(self):
 
         donot_compute_priority = SettingsManager.get("sla")
+        default_priority = SettingsManager.get("delfaultPriority", PRIORITIES.default)
 
         if donot_compute_priority:
-            highest_priority = PRIORITIES.default
+            highest_priority = default_priority
         else:
             priority_list = []
             for req_id in self.instructions.keys():
                 priority = self._get_instr(req_id, "diffpriority")
                 priority_list.append(priority)
 
-            highest_priority = min(priority_list + [PRIORITIES.default])
+            highest_priority = min(priority_list + [default_priority])
 
         return highest_priority
 
@@ -722,8 +724,7 @@ class DiffMetManager:
 
         return res
 
-    @staticmethod
-    def diff_info_to_xml(element,diff_info,prefix=""):
+    def diff_info_to_xml(self, element,diff_info,prefix=""):
         def bin_bool(in_boolean):
             return str(int(in_boolean))
 
@@ -824,7 +825,7 @@ class DiffMetManager:
         return path_to_file
 
 
-if DEBUG and __name__ == '__main__':
+if __name__ == '__main__':
 
     process_name = "harness_file_manager"
     setproctitle(process_name)

@@ -161,8 +161,14 @@ class Database():
         with cls.get_app().app_context():
             status = cls.get_request_status(req_id)
 
-            message = Diffusion.query.filter(Diffusion.fullrequestId.\
-                      contains(req_id)).first().message or ""
+            rec= Diffusion.query.filter(Diffusion.fullrequestId.\
+                      contains(req_id)).first()
+            if rec is None:
+                message = ""
+                LOGGER.warning("No corresponding request id in database "
+                               "for request %s", req_id)
+            else:
+                message = rec.message
 
         return status, message
 

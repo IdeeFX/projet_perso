@@ -7,8 +7,8 @@ from distutils.util import strtobool
 import argparse
 import traceback
 import os
-from os import listdir
-from os.path import join, basename
+from os import listdir, rename
+from os.path import join, basename, splitext
 from time import sleep, time
 from setproctitle import setproctitle
 from ftplib import FTP, error_perm
@@ -64,7 +64,13 @@ class DifmetSender:
             cls.dir_d = dir_d = HarnessTree.get("temp_dissRequest_D")
             # move back any remaining file from D to C
             for file_ in listdir(dir_d):
-                shutil.move(join(dir_d, file_), dir_c)
+                # move back every file except those who are still in transfer
+                if not splitext(file_)[1] == ".lock":
+                    try:
+                        shutil.move(join(dir_d, file_), dir_c)
+                    # to avoid concurrent issue
+                    except FileNotFoundError:
+                        pass
 
             # get files in C
             max_files = cls.nb_workers
@@ -81,12 +87,14 @@ class DifmetSender:
                     continue
                 size = os.stat(file_)
 
-                timeout= cls.compute_timeout(size)
+                timeout= cls.compute_timeout(size, file_)
 
                 # TODO try to improve speed by connecting once and pass the FTP object.
                 # might not work though because of pickle issues in multiprocessing
                 # the timeout is managed at pool level, not individually
                 # start download
+                # renaming file to prevent any operation on it.
+                cls.lock_file(file_)
                 res = cls.pool.apply_async(cls.abortable_ftp,
                                             (cls.upload_file, file_),
                                             dict(timeout=timeout))
@@ -116,6 +124,8 @@ class DifmetSender:
     @classmethod
     def setup_process(cls):
         if not cls._running:
+            setup_logging()
+            LOGGER = logging.getLogger(__name__)
             LOGGER.info("Sender process starting")
             # create tree structure if necessary
             HarnessTree.setup_tree()
@@ -149,22 +159,23 @@ class DifmetSender:
 
 
     @staticmethod
-    def compute_timeout(required_bandwith):
+    def compute_timeout(required_bandwith, file_):
         # compute timeout
         bandwidth = SettingsManager.get("bandwidth")
         if bandwidth in [None, 0]:
             LOGGER.warning("Incorrect value for harness settings bandwidth. "
-                           "ftp timeout set to default TIMEOUT %i s.",
-                            TIMEOUT)
+                           "ftp timeout set to default TIMEOUT %i s for file %s.",
+                            TIMEOUT, file_)
             timeout = TIMEOUT
         elif DEBUG:
             timeout = DEBUG_TIMEOUT
-            LOGGER.debug("Sftp debug timeout set to %s s", timeout)
+            LOGGER.debug("Ftp debug timeout set to %s s for file %s.",
+                         timeout, file_)
         else:
             # conversion in Mbits/s with shift_expr << operator
             timeout = required_bandwith/bandwidth*1 << 17*SFTP_PARAMETERS.timeout_buffer
-            LOGGER.debug("Ftp timeout computed to %s s", timeout)
-
+            LOGGER.debug("Ftp timeout computed to %s s for file %s.",
+                         timeout, file_)
 
         return timeout
 
@@ -253,11 +264,13 @@ class DifmetSender:
 
         res = proc.apply_async(func, args=args)
         # size in Mbytes
-        file_ = args[0]
+        # get file name + ".lock" extension
+        file_ = args[0] + ".lock"
         size = os.stat(file_).st_size / (1 << 20)
         try:
             # Wait timeout seconds for func to complete.
             upload_ok, duration = res.get(timeout)
+            file_ = cls.unlock_file(file_)
             if not upload_ok:
                 shutil.move(file_, cls.dir_c)
                 LOGGER.debug("Moved file back from repertory %s to repertory %s",
@@ -267,6 +280,7 @@ class DifmetSender:
                              file_, size, duration)
                 Tools.remove_file(file_, "difmet archive", LOGGER)
         except multiprocessing.TimeoutError:
+            file_ = cls.unlock_file(file_)
             LOGGER.error("Timeout of %f s exceeded for sending file %s"
                          " on staging post.", file_, timeout)
             # move the file back from D to C
@@ -274,25 +288,39 @@ class DifmetSender:
             LOGGER.debug("Moved file back from repertory %s to repertory %s",
                          cls.dir_d, cls.dir_c)
         except Exception as exc:
+            cls.unlock_file(file_)
             trace = ''.join(traceback.format_exception(type(exc),
                             exc, exc.__traceback__))
             LOGGER.error("Error when uploading file %s with "
                          "trace :\n %s", args[0], trace)
 
             LOGGER.error()
+
         proc.terminate()
+
+    @staticmethod
+    def unlock_file(file_):
+        if splitext(file_)[1] == ".lock":
+            rename(file_, file_[:-5])
+            file_ = file_[:-5]
+        return file_
+
+    @staticmethod
+    def lock_file(file_):
+        rename(file_, file_ + ".lock")
 
     @classmethod
     def upload_file(cls, file_):
         start = time()
         connection_ok, ftp = cls.connect_ftp()
+        file_locked = file_ + ".lock"
         if connection_ok:
             ftpdir = SettingsManager.get("dissFtpDir")
             # TODO dir existence check
             ftp.cwd(ftpdir)
             # renaming in tmp
             file_renamed = basename(file_) + ".tmp"
-            ftp.storbinary('STOR ' + file_renamed, open(file_, 'rb'))
+            ftp.storbinary('STOR ' + file_renamed, open(file_locked, 'rb'))
             ftp.rename(file_renamed, basename(file_))
 
             upload_ok = True
@@ -302,7 +330,7 @@ class DifmetSender:
 
         return upload_ok, time() - start
 
-if DEBUG and __name__ == '__main__':
+if __name__ == '__main__':
     process_name = "harness_difmet_sender"
     setproctitle(process_name)
     parser = argparse.ArgumentParser(description='File sender process loop.')
