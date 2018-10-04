@@ -14,7 +14,7 @@ from setproctitle import setproctitle
 from ftplib import FTP, error_perm
 from utils.setup_tree import HarnessTree
 from utils.log_setup import setup_logging
-from utils.const import SFTP_PARAMETERS, ENV, TIMEOUT, DEBUG_TIMEOUT
+from utils.const import TIMEOUT_BUFFER, ENV, TIMEOUT, DEBUG_TIMEOUT
 from utils.tools import Tools
 from settings.settings_manager import SettingsManager, DebugSettingsManager
 from webservice.server.application import APP
@@ -41,11 +41,11 @@ class DifmetSender:
     nb_workers = None
 
     @classmethod
-    def process(cls , process_name=None, max_loops=0):
+    def process(cls , max_loops=0):
         cls.nb_workers = SettingsManager.get("sendFTPlimitConn")
         # in debug mode, it is possible to set
         pool_method = cls.get_pool_method()
-        cls.pool = pool_method(processes=SFTP_PARAMETERS.workers)
+        cls.pool = pool_method(processes=cls.nb_workers)
         counter = 0
         cls.setup_process()
         while cls._running:
@@ -173,7 +173,7 @@ class DifmetSender:
                          timeout, file_)
         else:
             # conversion in Mbits/s with shift_expr << operator
-            timeout = required_bandwith/bandwidth*1 << 17*SFTP_PARAMETERS.timeout_buffer
+            timeout = required_bandwith/bandwidth*1 << 17*TIMEOUT_BUFFER
             LOGGER.debug("Ftp timeout computed to %s s for file %s.",
                          timeout, file_)
 
