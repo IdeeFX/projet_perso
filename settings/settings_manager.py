@@ -3,7 +3,7 @@ import os
 import logging
 from multiprocessing.pool import Pool
 from multiprocessing.dummy import Pool as ThreadPool
-from utils.const import DEFAULT_SETTINGS_PATH, DEFAULT_SETTINGS
+from utils.const import DEFAULT_SETTINGS_PATH, DEFAULT_SETTINGS, ENV, MAX_REGEX
 from utils.tools import Tools
 
 LOGGER = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ def compact_dict(in_dict, prefix="", exceptions=[]):
 
     for k, val in in_dict.items():
 
-        if isinstance(val, dict) and k not in exceptions:
+        if isinstance(val, dict) and k.lower() not in exceptions:
             child_dict = compact_dict(val, prefix=k)
             out_dict.update(child_dict)
         else:
@@ -48,11 +48,8 @@ class SettingsManager:
                        keepFileTime=None,
                        bandwidth=None,
                        tmpregex=None,
-                       fileRegex1=None,
-                       fileRegex2=None,
-                       fileRegex3=None,
                        sla=None,
-                       delAck=None,
+                       delAck=DEFAULT_SETTINGS.delAck,
                        delfaultPriority=None,
                        diffFileName=DEFAULT_SETTINGS.diffFileName,
                        fileEndLive=DEFAULT_SETTINGS.fileEndLive,
@@ -71,7 +68,7 @@ class SettingsManager:
 
         # load yaml settings file
         #TODO move MFSERV_HARNAIS_SETTINGS into const
-        path = cls._settings_file = os.environ.get("MFSERV_HARNESS_SETTINGS", None)
+        path = cls._settings_file = os.environ.get(ENV.settings, None)
         if path is None:
             path = cls._settings_file = os.path.join(os.path.dirname(__file__), settings_file)
 
@@ -80,6 +77,8 @@ class SettingsManager:
         checksum = Tools.checksum_file(path)
 
         if reloading or checksum != cls._checksum:
+            for i in range(1, MAX_REGEX+1):
+                cls._parameters["fileRegex%i" % i] = dict()
 
             with open(path, "r") as file_:
                 settings = yaml.safe_load(file_)
@@ -89,7 +88,7 @@ class SettingsManager:
             # TODO check if diffFileName has been defined
 
             # TODO should be better than this hack
-            exceptions = ["fileregex%i" %i for i in range(1,4)]
+            exceptions = ["fileregex%i" %i for i in range(1,MAX_REGEX+1)]
             settings = compact_dict(settings, exceptions=exceptions)
 
             # set up with class variables

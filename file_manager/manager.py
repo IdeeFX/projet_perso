@@ -18,21 +18,20 @@ from settings.settings_manager import SettingsManager, DebugSettingsManager
 from utils.log_setup import setup_logging
 from utils.setup_tree import HarnessTree
 from utils.database import Database, Diffusion
-from utils.const import (REQ_STATUS, SCP_PARAMETERS, DEBUG_TIMEOUT, PRIORITIES,
-                         MAX_REGEX, DEFAULT_ATTACHMENT_NAME)
+from utils.const import (REQ_STATUS, SFTP_PARAMETERS, DEBUG_TIMEOUT, TIMEOUT,
+                        PRIORITIES, MAX_REGEX, DEFAULT_ATTACHMENT_NAME, ENV)
 from utils.tools import Tools, Incrementator
 from webservice.server.application import APP
 
 
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 try:
     TEST_SFTP = bool(strtobool(os.environ.get("MFSERV_HARNESS_TEST_SFTP") or "False"))
 except ValueError:
     TEST_SFTP = False
-
 
 # initialize LOGGER
 setup_logging()
@@ -53,24 +52,17 @@ class FileManager:
     @classmethod
     def process(cls, max_loops=0):
         if not DEBUG:
-            setproctitle("harness_file_manager")
+            process_name = "harness_file_manager"
+            setproctitle(process_name)
         counter = 0
         instr_to_process = False
-        if not cls._running:
-            LOGGER.info("File manager process starting")
-            # create tree structure if necessary
-            HarnessTree.setup_tree()
-            #connect the database
-            Database.initialize_database(APP)
-            cls._running = True
+        cls.setup_process()
         while cls._running:
             counter +=1
-            if counter % 10 ==0:
-                LOGGER.debug("File manager process is running. "
-                             "Loop number %i", counter)
-            loaded = SettingsManager.load_settings()
-            if loaded:
-                LOGGER.debug("Settings loaded")
+
+            cls.signal_loop(counter)
+            cls.load_settings()
+
             cls.dir_a = dir_a = HarnessTree.get("temp_dissRequest_A")
             cls.dir_b = dir_b = HarnessTree.get("temp_dissRequest_B")
             cls.dir_c = HarnessTree.get("temp_dissRequest_C")
@@ -113,54 +105,97 @@ class FileManager:
                     all_files_fetched += [item for item in files_fetched if
                                          item not in all_files_fetched]
 
-            # process files fetched
-            for file_path in all_files_fetched:
+            cls.package_data(all_files_fetched, diss_instructions)
 
-                filename = os.path.basename(file_path)
-                requestId_list = Database.get_id_list_by_filename(filename)
+            cls.clear_instruction_files(instruction_files)
 
-                # no reference
-                if requestId_list == []:
-                    Tools.remove_file(file_path, "orphan file", LOGGER)
-                    continue
+            cls.clear_orphan_files(dir_b)
 
-                # purge requestId_list or req_id that are not in
-                # diss_instructions keys. That is to prevent trying to find
-                # an instruction file related to a file that has been processed
-                # by a previous request
+            cls.check_end_loop(counter, max_loops)
 
-                requestId_list = [item for item in requestId_list
-                                  if item in diss_instructions.keys()]
+    @staticmethod
+    def package_data(all_files_fetched, diss_instructions):
+        # process files fetched
+        for file_path in all_files_fetched:
 
-                LOGGER.debug("Processing downloaded file %s linked to "
-                            "requests %s", file_path, requestId_list)
+            filename = os.path.basename(file_path)
+            request_id_list = Database.get_id_list_by_filename(filename)
 
-                diff_manager = DiffMetManager(
-                    requestId_list, file_path, diss_instructions)
-                # rename files according to regex
-                diff_manager.rename()
-                # package the archive
-                diff_manager.compile_archive()
+            # no reference
+            if request_id_list == []:
+                Tools.remove_file(file_path, "orphan file", LOGGER)
+                continue
+
+            # purge requestId_list or req_id that are not in
+            # diss_instructions keys. That is to prevent trying to find
+            # an instruction file related to a file that has been processed
+            # by a previous request
+
+            request_id_list = [item for item in request_id_list
+                                if item in diss_instructions.keys()]
+
+            LOGGER.debug("Processing downloaded file %s linked to "
+                        "requests %s", file_path, request_id_list)
+
+            diff_manager = DiffMetManager(request_id_list,
+                                          file_path,
+                                          diss_instructions)
+            # rename files according to regex
+            diff_manager.rename()
+            # package the archive
+            diff_manager.compile_archive()
+
+    @classmethod
+    def check_end_loop(cls, counter, max_loops):
+        if counter == max_loops:
+            LOGGER.info("Performed required %i loops, exiting.", counter)
+            cls.stop()
+
+    @staticmethod
+    def signal_loop(counter):
+        if counter % 10 ==0:
+            LOGGER.debug("File manager process is running. "
+                            "Loop number %i", counter)
+            if DEBUG:
+                LOGGER.warning("DEBUG mode activated.")
+
+    @staticmethod
+    def load_settings():
+        loaded = SettingsManager.load_settings()
+        if loaded:
+            LOGGER.debug("Settings loaded")
+
+    @classmethod
+    def setup_process(cls):
+        if not cls._running:
+            LOGGER.info("File manager process starting")
+            # create tree structure if necessary
+            HarnessTree.setup_tree()
+            #connect the database
+            Database.initialize_database(APP)
+            cls._running = True
+
+    @staticmethod
+    def clear_instruction_files(instruction_files):
+        # cleaning instruction files
+        for file_ in instruction_files:
+            try:
+                Tools.remove_file(file_, "instruction", LOGGER)
+            # file either was moved back to repertory A or deleted
+            except FileNotFoundError:
+                pass
+
+    @staticmethod
+    def clear_orphan_files(dir_):
+        # cleaning other files
+        for file_ in os.listdir(dir_):
+            file_path = os.path.join(dir_, file_)
+            try:
+                Tools.remove_file(file_path, "orphan", LOGGER)
+            except FileNotFoundError:
+                pass
 
 
-            # cleaning instruction files
-            for file_ in instruction_files:
-                try:
-                    Tools.remove_file(file_, "instruction", LOGGER)
-                # file either was moved back to repertory A or deleted
-                except FileNotFoundError:
-                    pass
-
-            # cleaning other files
-            for file_ in os.listdir(dir_b):
-                file_path = os.path.join(dir_b, file_)
-                try:
-                    Tools.remove_file(file_, "orphan", LOGGER)
-                except FileNotFoundError:
-                    pass
-            if counter == max_loops:
-                LOGGER.info("Performed required %i loops, exiting.", counter)
-                cls.stop()
 
     @classmethod
     def stop(cls):
@@ -324,6 +359,8 @@ class ConnectionPointer:
                 # if the file has already been fetched by a previous instruction file,
                 # we don't do it again
                 if not os.path.isfile(destination_path):
+                    LOGGER.debug("Copying file from %s to %s.",
+                                  file_path, destination_path)
                     shutil.copy(file_path, destination_path)
                 self.update_filename(item)
                 files_fetched.append(file_path)
@@ -335,30 +372,25 @@ class ConnectionPointer:
                                            **dict(fullrequestId=self.req_id))
             fetch_ok = False
         else:
-            fetch_ok, files_fetched = self.scp_dir(dir_path, destination_dir)
+            fetch_ok, files_fetched = self.sftp_dir(dir_path, destination_dir)
 
         return fetch_ok, files_fetched
 
-    def unzip_file(self, list_files):
-        # TODO obviously...
-        raise NotImplementedError
-        return new_path
 
-    # @staticmethod
-    # def _scp_file(sftp, *args,**kwargs):
-    #         # ssh = paramiko.SSHClient()
-    #         # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    def _sftp_file(self, dir_path, file_path, destination_path, skip):
 
-    #         # ssh.connect(**kwargs)
-    #         # sftp = ssh.open_sftp()
-    #         sftp.get(*args)
-    #         # sftp.close()
-    #         # ssh.close()
+        if not skip:
+            transport = paramiko.Transport((self.hostname, self.port))
+            transport.connect(username=self.user, password=self.password)
+            sftp = paramiko.SFTPClient.from_transport(transport)
+            sftp.chdir(dir_path)
+            sftp.get(file_path, destination_path)
+            sftp.close()
+            transport.close()
 
-    def scp_dir(self, dir_path, destination_dir):
+    def sftp_dir(self, dir_path, destination_dir):
 
-
-        files_to_scp = []
+        files_to_sftp = []
         try:
             transport = paramiko.Transport((self.hostname, self.port))
             transport.connect(username=self.user, password=self.password)
@@ -371,7 +403,8 @@ class ConnectionPointer:
                 # if the file has already been fetched by a previous instruction file,
                 # we don't do it again
                 if os.path.isfile(destination_path):
-                    files_to_scp.append((file_path, destination_path))
+                    files_to_sftp.append((dir_path, file_path, destination_path, True))
+                    LOGGER.debug("File %s already downloaded, moving on", file_path)
                     continue
                 mode = sftp.stat(file_path).st_mode
                 # ignore directories
@@ -390,66 +423,34 @@ class ConnectionPointer:
                 LOGGER.debug('file %s found on openwis staging post',
                              file_path
                              )
-                files_to_scp.append((file_path, destination_path))
+                files_to_sftp.append((dir_path, file_path, destination_path, False))
 
-
+            sftp.close()
+            transport.close()
 
             # initialize the multiprocessing manager
             if DEBUG:
-                pool = DebugSettingsManager.sftp_pool(processes=SCP_PARAMETERS.workers)
-                # pool = multiprocessing.dummy.Pool(processes=SCP_PARAMETERS.workers)
+                pool = DebugSettingsManager.sftp_pool(processes=SFTP_PARAMETERS.workers)
             else:
-                # TODO fix multiprocessing
-                # pool = multiprocessing.Pool(processes=SCP_PARAMETERS.workers)
-                DebugSettingsManager.sftp_pool(processes=SCP_PARAMETERS.workers)
-            # add job to pool
-            # TODO clean up
-            # scp_files = partial(self._scp_file, **connection_info)
-            # results = pool.starmap_async(scp_files, files_to_scp)
-            results = pool.starmap_async(sftp.get, files_to_scp)
-            # compute timeout
-            bandwidth = SettingsManager.get("bandwidth")
-            if bandwidth in [None, 0]:
-                LOGGER.warning("Incorrect value for harness settings bandwidth."
-                               " Scp timeout desactivated.")
-                # TODO can stop the process ! Be careful
-                timeout = None
-            elif DEBUG:
-                timeout = DEBUG_TIMEOUT
-                LOGGER.debug("Sftp debug timeout set to %s s", timeout)
-            else:
-                # conversion in Mbits/s with shift_expr << operator
-                timeout = required_bandwith/bandwidth*1 << 17*SCP_PARAMETERS.timeout_buffer
-                LOGGER.debug("Sftp timeout computed to %s s", timeout)
-            # start download
+                pool = multiprocessing.Pool(processes=SFTP_PARAMETERS.workers)
+            results = pool.starmap_async(self._sftp_file, files_to_sftp)
+
+            timeout = self.compute_timeout(required_bandwith)
+
+            nb_downloads = sum([not i[3] for i in files_to_sftp])
             try:
                 LOGGER.debug("Attempting download of %i files, for a total size of "
-                             " %f. Timeout is fixed at %s s.", len(
-                                 files_to_scp),
+                             " %f. Timeout is fixed at %s s.", nb_downloads,
                              required_bandwith, timeout)
                 results.get(timeout=timeout)
-                scp_success = True
+                sftp_success = True
             except multiprocessing.TimeoutError:
                 LOGGER.error(
                     "Timeout exceeded for fetching files on staging post.")
-                scp_success = False
+                sftp_success = False
 
-            # check download success and unzip if necessary then update database
-            for remote_path, local_path in files_to_scp:
-                if os.path.isfile(local_path):
-                    LOGGER.debug('file %s downloaded in repertory %s',
-                                 remote_path,
-                                 os.path.dirname(local_path)
-                                 )
-                    # unzip and gets new name
-                    if os.path.basename(local_path) == "tmp.zip":
-                        local_path = self.unzip_file(local_path)
-                    scp_success = True and scp_success
-                else:
-                    LOGGER.error("Download of file %s in repertory %s failed.", remote_path,
-                                 os.path.dirname(local_path)
-                                 )
-                    scp_success = False
+            # check download success and rename zip if necessary then update database
+            sftp_success = self.check_download_success(files_to_sftp, sftp_success)
 
             sftp.close()
 
@@ -457,7 +458,7 @@ class ConnectionPointer:
         except (paramiko.SSHException,
                 paramiko.ssh_exception.NoValidConnectionsError):
             LOGGER.exception("Couldn't connect to %s", self.hostname)
-            scp_success = False
+            sftp_success = False
         except FileOverSizeLimit:
             LOGGER.exception('file %s found on openwis staging post'
                 'is over the size limit %f. Dissemination '
@@ -467,7 +468,7 @@ class ConnectionPointer:
                 )
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=self.req_id))
-            scp_success = False
+            sftp_success = False
         except FileNotFoundError:
             LOGGER.exception('Incorrect path %s for openwis staging post'
                 'Dissemination failed',
@@ -475,19 +476,62 @@ class ConnectionPointer:
                 )
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=self.req_id))
-            scp_success = False
+            sftp_success = False
 
 
         # update database
+        files_downloaded = self.update(sftp_success, files_to_sftp)
+
+        return sftp_success, files_downloaded
+
+    @staticmethod
+    def check_download_success(files_to_sftp, sftp_success):
+
+        for _, remote_path, local_path, skip in files_to_sftp:
+            if skip:
+                sftp_success = True and sftp_success
+            elif os.path.isfile(local_path):
+                LOGGER.debug('file %s downloaded in repertory %s',
+                                remote_path,
+                                os.path.dirname(local_path)
+                                )
+                sftp_success = True and sftp_success
+            else:
+                LOGGER.error("Download of file %s in repertory %s failed.", remote_path,
+                                os.path.dirname(local_path)
+                                )
+                sftp_success = False
+
+        return sftp_success
+
+    @staticmethod
+    def compute_timeout(required_bandwith):
+        # compute timeout
+        bandwidth = SettingsManager.get("bandwidth")
+        if bandwidth in [None, 0]:
+            LOGGER.warning("Incorrect value for harness settings bandwidth. "
+                           "Sftp timeout set to default TIMEOUT %i s.",
+                            TIMEOUT)
+            timeout = TIMEOUT
+        elif DEBUG:
+            timeout = DEBUG_TIMEOUT
+            LOGGER.debug("Sftp debug timeout set to %s s", timeout)
+        else:
+            # conversion in Mbits/s with shift_expr << operator
+            timeout = required_bandwith/bandwidth*1 << 17*SFTP_PARAMETERS.timeout_buffer
+            LOGGER.debug("Sftp timeout computed to %s s", timeout)
+        # start download
+
+        return timeout
+
+    def update(self, sftp_success, files_to_sftp):
         files_downloaded = []
-        if scp_success:
-            for  _, local_path in files_to_scp:
+        if sftp_success:
+            for  _, _, local_path, _ in files_to_sftp:
                 self.update_filename(os.path.basename(local_path))
                 files_downloaded.append(local_path)
 
-
-        return scp_success, files_downloaded
-
+        return files_downloaded
 
 class DiffMetManager:
 
@@ -555,14 +599,21 @@ class DiffMetManager:
             "fileRegex%i" % i, {}) for i in range(1, MAX_REGEX+1)]
 
         new_filename = self.original_filename
-        for idx, regex_instruction in enumerate(regex_settings):
-            reg = regex_instruction.get("pattern_in", None)
-            repl = regex_instruction.get("pattern_out", None)
+        if new_filename == "tmp.zip":
+            zip_regex = SettingsManager.get("tmpregex")
+            if zip_regex is None:
+                LOGGER.error("No regex defined in tmpregex settings !")
+            else:
+                new_filename = self._rename_by_regex(new_filename, "tmp.zip", zip_regex)
+        else:
+            for idx, regex_instruction in enumerate(regex_settings):
+                reg = regex_instruction.get("pattern_in", None)
+                repl = regex_instruction.get("pattern_out", None)
 
-            if None not in (reg, repl):
-                new_filename = self._rename_by_regex(new_filename, reg, repl)
-            elif idx == 0:
-                LOGGER.error("No regex defined in fileregex1 settings !")
+                if None not in (reg, repl):
+                    new_filename = self._rename_by_regex(new_filename, reg, repl)
+                elif idx == 0:
+                    LOGGER.error("No regex defined in fileregex1 settings !")
 
         # update record with new filename
         with Database.get_app().app_context():
@@ -592,7 +643,8 @@ class DiffMetManager:
             records = Diffusion.query.filter_by(final_file=self.new_filename).all()
         self.update_database(records, "rxnotif", False)
 
-    def update_database(self, records, key, value):
+    @staticmethod
+    def update_database(records, key, value):
 
         # fetch database
         database = Database.get_database()
@@ -614,7 +666,8 @@ class DiffMetManager:
 
         return highest_priority
 
-    def _get_end_date(self):
+    @staticmethod
+    def _get_end_date():
 
         limit = SettingsManager.get("fileEndLive") or 0
 
@@ -631,7 +684,8 @@ class DiffMetManager:
         return os.stat(new_path).st_size
 
 
-    def _get_port_value(self, diff_attributes):
+    @staticmethod
+    def _get_port_value(diff_attributes):
 
         port = diff_attributes["port"]
         encrypted = diff_attributes["encrypted"]
@@ -651,44 +705,63 @@ class DiffMetManager:
 
         return res
 
-
-    def _create_diffmet_instr(self):
-
-        def binBool(in_boolean):
+    @staticmethod
+    def diff_info_to_xml(element,diff_info,prefix=""):
+        def bin_bool(in_boolean):
             return str(int(in_boolean))
 
-        def diffInfoToXml(element,diff_info,prefix=""):
-            if diff_info["DiffusionType"] == "FTP":
-                etree.SubElement(element, prefix + "media").text="FTP"
-                etree.SubElement(element, prefix + "ftp_host").text = str(diff_info["host"])
-                etree.SubElement(element, prefix + "ftp_user").text = str(diff_info["user"])
-                etree.SubElement(element, prefix + "ftp_passwd").text = str(diff_info["password"])
-                etree.SubElement(element, prefix + "ftp_directory").text = str(diff_info["remotePath"])
-                etree.SubElement(element, prefix + "ftp_use_size").text = binBool(diff_info["checkFileSize"])
-                etree.SubElement(element, prefix + "ftp_passive").text = binBool(diff_info["passive"])
-                etree.SubElement(element, prefix + "ftp_port").text = self._get_port_value(diff_info)
-                etree.SubElement(element, prefix + "ftp_tmp_method").text = "NAME"
-                if diff_info["fileName"] != "":
-                    etree.SubElement(element, prefix + "ftp_final_file_name").text = str(diff_info["fileName"])
-                    etree.SubElement(element, prefix + "ftp_tmp_file_name").text = str(diff_info["fileName"]+ ".tmp")
-                else:
-                    etree.SubElement(element, prefix + "ftp_final_file_name").text = self.original_filename
-                    etree.SubElement(element, prefix + "ftp_tmp_file_name").text = self.original_filename + ".tmp"
-                # etree.SubElement(element, "switch_method_medias_ftp").text = "NTRY"
+        def ftp_to_xml(element,diff_info,prefix=""):
+            etree.SubElement(element, prefix + "media").text="FTP"
+            etree.SubElement(element, prefix + "ftp_host").text = str(diff_info["host"])
+            etree.SubElement(element, prefix + "ftp_user").text = str(diff_info["user"])
+            etree.SubElement(element, prefix + "ftp_passwd").text = str(diff_info["password"])
+            etree.SubElement(element, prefix + "ftp_directory").text = str(diff_info["remotePath"])
+            etree.SubElement(element, prefix + "ftp_use_size").text = bin_bool(diff_info["checkFileSize"])
+            etree.SubElement(element, prefix + "ftp_passive").text = bin_bool(diff_info["passive"])
+            etree.SubElement(element, prefix + "ftp_port").text = self._get_port_value(diff_info)
+            etree.SubElement(element, prefix + "ftp_tmp_method").text = "NAME"
+            if diff_info["fileName"] != "":
+                etree.SubElement(element, prefix + "ftp_final_file_name").text = str(diff_info["fileName"])
+                etree.SubElement(element, prefix + "ftp_tmp_file_name").text = str(diff_info["fileName"]+ ".tmp")
+            elif self.original_filename == "tmp.zip":
+                etree.SubElement(element, prefix + "ftp_final_file_name").text = self.new_filename
+                etree.SubElement(element, prefix + "ftp_tmp_file_name").text = self.new_filename + ".tmp"
+            else:
+                etree.SubElement(element, prefix + "ftp_final_file_name").text = self.original_filename
+                etree.SubElement(element, prefix + "ftp_tmp_file_name").text = self.original_filename + ".tmp"
+            # etree.SubElement(element, "switch_method_medias_ftp").text = "NTRY"
+
+        def mail_to_xml(element,diff_info,prefix=""):
+            etree.SubElement(element, prefix + "media").text = "EMAIL"
+            etree.SubElement(element, prefix + "email_adress").text = str(diff_info["address"])
+            #TODO check correspondance for BCC value
+            etree.SubElement(element, prefix + "email_to_cc").text = str(diff_info["dispatchMode"])
+            etree.SubElement(element, prefix + "email_subject").text = str(diff_info["subject"])
+            etree.SubElement(element, prefix + "email_text_in_body").text = "0"
+            # etree.SubElement(element, prefix + "email_preamble").text = ""
+            if diff_info["fileName"] != "":
+                etree.SubElement(element, prefix + "email_attached_file_name").text = str(diff_info["fileName"])
+            else:
+                etree.SubElement(element, prefix + "email_attached_file_name").text = DEFAULT_ATTACHMENT_NAME
+
+        if diff_info["DiffusionType"] == "FTP":
+            ftp_to_xml(element, diff_info, prefix="")
+        elif diff_info["DiffusionType"] == "EMAIL":
+            mail_to_xml(element, diff_info, prefix="")
 
 
-            elif diff_info["DiffusionType"] == "EMAIL":
-                etree.SubElement(element, prefix + "media").text = "EMAIL"
-                etree.SubElement(element, prefix + "email_adress").text = str(diff_info["address"])
-                #TODO check correspondance for BCC value
-                etree.SubElement(element, prefix + "email_to_cc").text = str(diff_info["dispatchMode"])
-                etree.SubElement(element, prefix + "email_subject").text = str(diff_info["subject"])
-                etree.SubElement(element, prefix + "email_text_in_body").text = "0"
-                # etree.SubElement(element, prefix + "email_preamble").text = ""
-                if diff_info["fileName"] != "":
-                    etree.SubElement(element, prefix + "email_attached_file_name").text = str(diff_info["fileName"])
-                else:
-                    etree.SubElement(element, prefix + "email_attached_file_name").text = DEFAULT_ATTACHMENT_NAME
+
+    # TODO tostring method
+    def _create_diffmet_instr(self):
+
+        def get_prefix(diff):
+            if diff["DiffusionType"] == "FTP":
+                prefix = "standby_ftp_"
+            else:
+                prefix = "standby_email_"
+
+            return prefix
+
 
         date_str = strftime("%Y%m%d%H%M%S")
         path_to_file = ",".join((SettingsManager.get("diffFileName"),
@@ -714,15 +787,12 @@ class DiffMetManager:
             etree.SubElement(diffusion,"diffusion_externalid").text = Database.get_external_id(req_id)
             etree.SubElement(diffusion,"archive").text = "0"
 
-            diffInfoToXml(diffusion, diff)
+            self.diff_info_to_xml(diffusion, diff)
 
             if "alternativeDiffusion" in instr.keys():
                 altdiff = instr["alternativeDiffusion"]
-                if altdiff["DiffusionType"] == "FTP":
-                    prefix = "standby_ftp_"
-                else:
-                    prefix = "standby_email_"
-                diffInfoToXml(diffusion,altdiff, prefix=prefix)
+                prefix = get_prefix(altdiff)
+                self.diff_info_to_xml(diffusion,altdiff, prefix=prefix)
                 etree.SubElement(diffusion,"standby_media").text = altdiff["DiffusionType"]
 
             etree.SubElement(diffusion,"standby_switch_try_number").text = "3"

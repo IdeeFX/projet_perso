@@ -4,10 +4,10 @@ import logging
 import tempfile
 from distutils.util import strtobool
 from settings.settings_manager import SettingsManager
-from utils.const import REPERTORY_TREE
+from utils.const import REPERTORY_TREE, ENV
 
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 
@@ -93,6 +93,9 @@ class HarnessTree:
         if SettingsManager.get_checksum() != cls._checksum:
             LOGGER.info("Settings have been modified")
             cls.setup_tree(update=True)
+        elif not os.path.isdir(cls._repertories[key]):
+            cls.setup_tree(update=False)
+
         return cls._repertories[key]
 
     @classmethod

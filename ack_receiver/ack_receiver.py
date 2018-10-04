@@ -9,7 +9,7 @@ from lxml import etree
 from distutils.util import strtobool
 from setproctitle import setproctitle
 from utils.setup_tree import HarnessTree
-from utils.const import REQ_STATUS
+from utils.const import REQ_STATUS, ENV
 from utils.log_setup import setup_logging
 from utils.tools import Tools
 from utils.database import Database, Diffusion
@@ -23,13 +23,13 @@ from webservice.server.application import APP
 setup_logging()
 LOGGER = logging.getLogger(__name__)
 LOGGER_ACK = logging.getLogger("difmet_ack_messages")
-LOGGER_ALARM =   logging.getLogger("difmet_alarm_message")
+LOGGER_ALARM =   logging.getLogger("difmet_alarm_messages")
 LOGGER.debug("Logging configuration set up in %s", __name__)
 
 LOGGER.info("Ack Receiver setup complete")
 # TODO move environment variables into utils.const
 try:
-    DEBUG = bool(strtobool(os.environ.get("MFSERV_HARNESS_DEBUG") or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
     DEBUG = False
 
@@ -42,57 +42,78 @@ class AckReceiver:
     @classmethod
     def process(cls, max_loops=0):
         if not DEBUG:
-            setproctitle("harness_ack_receiver")
+            process_name = "harness_ack_receiver"
+            setproctitle(process_name)
         counter = 0
+        cls.setup_process()
+        while cls._running:
+            counter += 1
+            cls.signal_loop(counter)
+            cls.load_settings()
+            # TODO check default value
+            idle_time = SettingsManager.get("sendFTPIdle") or 10
+            sleep(idle_time)
+            cls.dir_ack = dir_ack = HarnessTree.get("dir_ack")
+
+            cls.process_ack_files(dir_ack)
+            cls.process_alarm_files(dir_ack)
+
+            if counter == max_loops:
+                LOGGER.info("Performed required %i loops, exiting.", counter)
+                cls.stop()
+
+    @classmethod
+    def setup_process(cls):
         if not cls._running:
-            LOGGER.info("Ack receiver is starting")
+            LOGGER.info("Ack receiver process starting")
             # create tree structure if necessary
             HarnessTree.setup_tree()
             #connect the database
             Database.initialize_database(APP)
             cls._running = True
-        while cls._running:
-            counter += 1
-            if counter % 10 ==0:
-                LOGGER.debug("Ack receiver is running. "
-                             "Loop number %i", counter)
-            loaded = SettingsManager.load_settings()
-            if loaded:
-                LOGGER.debug("Settings loaded")
-            # TODO check default value
-            idle_time = SettingsManager.get("sendFTPIdle") or 10
-            sleep(idle_time)
+
+    @staticmethod
+    def signal_loop(counter):
+        if counter % 10 ==0:
+            LOGGER.debug("Ack receiver is running. "
+                         "Loop number %i", counter)
+            if DEBUG:
+                LOGGER.warning("DEBUG mode activated.")
+
+    @staticmethod
+    def load_settings():
+        loaded = SettingsManager.load_settings()
+        if loaded:
+            LOGGER.debug("Settings loaded")
+
+    @staticmethod
+    def check_ack_dir(dir_ack):
+        if not os.path.isdir(dir_ack):
+            LOGGER.error("Ack dir %s is not a repertory %s", dir_ack)
+            raise NotADirectoryError
 
 
-            cls.dir_ack = dir_ack = HarnessTree.get("dir_ack")
+    @classmethod
+    def process_ack_files(cls, dir_ack):
+        for file_ in listdir(dir_ack):
+            file_path = join(dir_ack, file_)
+            ack_file = re.match(r".*.acqdifmet.xml$", file_)
+            if ack_file is None:
+                continue
+            LOGGER.debug("Processing difmet ack file %s.", file_)
+            cls.get_ack(file_path)
+            Tools.remove_file(file_path, "difmet ack", LOGGER)
 
-            for file_ in listdir(dir_ack):
-                file_path = join(dir_ack, file_)
-                ack_file = re.match(r".*.acqdifmet.xml$", file_)
-                if ack_file is None:
-                    continue
-                LOGGER.debug("Processing difmet ack file %s.", file_)
-                diss_success, req_id = cls.get_id(file_path)
-
-                Tools.remove_file(file_path, "difmet ack", LOGGER)
-
-
-
-
-            for file_ in listdir(dir_ack):
-                file_path = join(dir_ack, file_)
-                alarme_file = re.match(r".*.errdifmet.xml$", file_)
-                if alarme_file is None:
-                    continue
-                LOGGER.debug("Processing difmet alarm file %s.", file_)
-                alarm_msg, req_id = cls.get_alarm(file_path)
-                if req_id is not None:
-                    cls.update_database_status(alarm_msg)
-                Tools.remove_file(file_path, "difmet alarm", LOGGER)
-            if counter == max_loops:
-                LOGGER.info("Performed required %i loops, exiting.", counter)
-                cls.stop()
-
+    @classmethod
+    def process_alarm_files(cls, dir_ack):
+        for file_ in listdir(dir_ack):
+            file_path = join(dir_ack, file_)
+            alarme_file = re.match(r".*.errdifmet.xml$", file_)
+            if alarme_file is None:
+                continue
+            LOGGER.debug("Processing difmet alarm file %s.", file_)
+            cls.get_alarm(file_path)
+            Tools.remove_file(file_path, "difmet alarm", LOGGER)
 
     @classmethod
     def stop(cls):
@@ -107,6 +128,7 @@ class AckReceiver:
 
     @classmethod
     def get_alarm(cls, file_):
+        req_id = None
 
         tree = etree.parse(file_)
         root = tree.getroot()
@@ -117,6 +139,7 @@ class AckReceiver:
             keys = ["date",
                     "severity",
                     "error",
+                    "error_text"
                     "subscriber_name"]
 
             msg_list = ["diffusion_externalid = %s" % diff_external_id]
@@ -128,16 +151,19 @@ class AckReceiver:
             alarm_msg = msg_list[0] + "\n".join(msg_list)
             LOGGER_ALARM.debug("Alarm message is : \n %s", alarm_msg)
 
-        LOGGER.info("Logged ")
-
-        return alarm_msg, req_id
+        for handler in LOGGER_ALARM.handlers:
+            LOGGER.info("Logged an alarm message into "
+                        "log file %s", handler.baseFilename)
+        if req_id is not None:
+            cls.update_database_status(alarm_msg)
 
 
     @classmethod
-    def get_id(cls, file_):
+    def get_ack(cls, file_):
         diff_success = False
         tree = etree.parse(file_)
         root = tree.getroot()
+        req_id = None
 
         for ack in root.findall("acquittement"):
             #TODO que signifie "quand il est présent" ?
@@ -163,6 +189,7 @@ class AckReceiver:
                     "email_adress"]
 
             if ack_type == "SEND" and status == "OK":
+                diff_success = True
                 cls.update_database_status(diff_success, req_id)
                 msg = ("DiffMet ack reports success for product %s "
                        "corresponding to request %s" %
@@ -170,7 +197,6 @@ class AckReceiver:
                        req_id))
                 LOGGER.info(msg)
                 cls.update_database_message(msg, req_id)
-                diff_success = True
             else:
                 ack_type_failure = ack_type
                 status_failure = status
@@ -196,18 +222,24 @@ class AckReceiver:
             LOGGER.error(msg)
             cls.update_database_message(msg, req_id)
 
+        for handler in LOGGER_ACK.handlers:
+            LOGGER.info("Logged an ack message into "
+                        "log file %s", handler.baseFilename)
 
-        return diff_success, req_id
+        if diff_success and req_id is None:
+            LOGGER.error("Couldn't retrieve dissemination requestId "
+                         "from external_id %s", diff_external_id)
+
 
     @classmethod
     def update_database_status(cls, diff_success, diff_id):
 
-        if diff_success:
-            LOGGER.info("Diffmet reported that diffusion %s failed.")
+        if not diff_success:
+            LOGGER.info("Diffmet reported that diffusion %s failed.", diff_id)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=diff_id))
         else:
-            LOGGER.info("Diffmet reported that diffusion %s succeeded.")
+            LOGGER.info("Diffmet reported that diffusion %s succeeded.", diff_id)
             Database.update_field_by_query("requestStatus", REQ_STATUS.succeeded,
                                             **dict(fullrequestId=diff_id))
 
