@@ -255,11 +255,14 @@ class FileManager:
 
         file_expired = cls.check_file_age(file_to_process)
         if file_expired:
-            LOGGER.warning("%s instruction file discarded "
-                           "because it is over expiration date "
-                           "according to keepfiletime settings "
-                           "parameter", file_to_process)
+            msg = ("%s instruction file discarded "
+                   "because it is over expiration date "
+                   "according to keepfiletime settings "
+                   "parameter" % file_to_process)
+            LOGGER.warning(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
+                                           **dict(fullrequestId=full_id))
+            Database.update_field_by_query("message", msg,
                                            **dict(fullrequestId=full_id))
         else:
             # get URI
@@ -279,6 +282,10 @@ class FileManager:
                     Tools.remove_file(file_to_process, "instruction", LOGGER)
                 else:
                     shutil.move(file_to_process, cls.dir_a)
+            else:
+                msg = "Instruction file processed"
+                Database.update_field_by_query("message", msg,
+                                **dict(fullrequestId=full_id))
 
             # TODO check with benjamin that we are not moving files TWICE
             # else:
@@ -366,10 +373,13 @@ class ConnectionPointer:
                 files_fetched.append(file_path)
             fetch_ok = True
         elif self.hostname == "localhost" and not os.path.isdir(dir_path):
-            LOGGER.error("Staging post path %s is not a directory. "
-                         "Dissemination failed", dir_path)
+            msg = ("Staging post path %s is not a directory. "
+                   "Dissemination failed" % dir_path)
+            LOGGER.error(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                            **dict(fullrequestId=self.req_id))
+            Database.update_field_by_query("message", msg,
+                                           **dict(fullrequestId=full_id))
             fetch_ok = False
         else:
             fetch_ok, files_fetched = self.sftp_dir(dir_path, destination_dir)
@@ -460,22 +470,24 @@ class ConnectionPointer:
             LOGGER.exception("Couldn't connect to %s", self.hostname)
             sftp_success = False
         except FileOverSizeLimit:
-            LOGGER.exception('file %s found on openwis staging post'
-                'is over the size limit %f. Dissemination '
-                'failed',
-                file_path,
-                max_size
-                )
+            msg = ('file %s found on openwis staging post'
+                   'is over the size limit %f. Dissemination '
+                   'failed' % (file_path, max_size))
+            LOGGER.exception(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=self.req_id))
+            Database.update_field_by_query("message", msg,
+                                           **dict(fullrequestId=full_id))
             sftp_success = False
         except FileNotFoundError:
-            LOGGER.exception('Incorrect path %s for openwis staging post'
-                'Dissemination failed',
-                dir_path
-                )
+            msg = ('Incorrect path %s for openwis staging post'
+                   'Dissemination failed' % dir_path)
+
+            LOGGER.exception(msg)
             Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
                                             **dict(fullrequestId=self.req_id))
+            Database.update_field_by_query("message", msg,
+                                **dict(fullrequestId=full_id))
             sftp_success = False
 
 
@@ -642,6 +654,7 @@ class DiffMetManager:
         with Database.get_app().app_context():
             records = Diffusion.query.filter_by(final_file=self.new_filename).all()
         self.update_database(records, "rxnotif", False)
+        self.update_database(records, "message", "File packaged in tar.gz format")
 
     @staticmethod
     def update_database(records, key, value):

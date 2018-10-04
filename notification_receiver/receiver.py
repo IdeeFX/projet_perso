@@ -129,7 +129,8 @@ class Notification():
                                   fullrequestId=self.req_id+self.hostname,
                                   requestStatus=REQ_STATUS.ongoing,
                                   Date=self._to_datetime(self.date_reception),
-                                  rxnotif=True)
+                                  rxnotif=True,
+                                  message="Created record in SQL database")
             with Database.get_app().app_context():
                 database.session.add(diffusion)
                 database.session.commit()
@@ -141,7 +142,6 @@ class Notification():
             LOGGER.exception("Error during notification processing. "
                              "Dissemination failed.")
             status = self.commit_failure(database, diff_id)
-        # TODO : strings like REQ_STATUS.ongoing
         return status
 
     def commit_failure(self, database, diff_id):
