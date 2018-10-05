@@ -4,6 +4,7 @@ from datetime import timedelta, datetime
 from shutil import copy
 from distutils.util import strtobool
 from tempfile import gettempdir
+import tempfile
 from settings.settings_manager import SettingsManager
 from flask_sqlalchemy import SQLAlchemy
 from utils.const import REQ_STATUS, RANDOM_ID_LENGTH, ENV
@@ -29,6 +30,8 @@ class Database():
     # def initialize_database(cls, app):
         cls._app = app
         if DEBUG:
+            gettempdir()
+            tempfile.tempdir = None
             db_dir = os.path.join(gettempdir(), "harnais")
         else:
             db_dir = SettingsManager.get("harnaisDir")
@@ -36,7 +39,10 @@ class Database():
         # if a database has already been set, we keep it
 
         if cls._db_file is not None and cls._db_file!=db_file:
-            copy(cls._db_file, db_file)
+            try:
+                copy(cls._db_file, db_file)
+            except FileNotFoundError:
+                pass
         cls._db_file = db_file
 
         uri = 'sqlite:///{db_file}'.format(db_file=db_file)
@@ -50,7 +56,7 @@ class Database():
             DTB.create_all()
 
         # check if a refresh is necessary
-        limit_format = dict(seconds=SettingsManager.get("delAck")*3600)
+        limit_format = dict(seconds=SettingsManager.get("delAck",0)*3600)
         limit = timedelta(**limit_format)
         if cls._last_refresh is None or (datetime.now() - cls._last_refresh) > limit:
             cls.refresh(**limit_format)
@@ -62,10 +68,17 @@ class Database():
     @classmethod
     def get_app(cls):
         if DEBUG:
+            gettempdir()
+            tempfile.tempdir = None
             db_dir = os.path.join(gettempdir(), "harnais")
         else:
             db_dir = SettingsManager.get("harnaisDir")
         db_file = os.path.join(db_dir, "harnais.database")
+
+        if cls._db_file is None:
+            from webservice.server.application import APP
+            LOGGER.info("Initialisation of the database.")
+            cls.initialize_database(APP)
 
         if db_file != cls._db_file and cls._db_file is not None:
             from webservice.server.application import APP
@@ -191,7 +204,12 @@ class Database():
                             msg)
         cls._last_refresh = datetime.now()
 
-
+    @classmethod
+    def reset(cls):
+        cls._app = None
+        cls._dtb = None
+        cls._db_file = None
+        cls._last_refresh = None
 
 class Diffusion(DTB.Model):
 
@@ -212,7 +230,6 @@ class Diffusion(DTB.Model):
                  'fullrequestId={fullrequestId}, '
                  'original_file={original_file}, '
                  'final_file={final_file}, '
-                 'status_values={status_values}, '
                  'requestStatus={requestStatus}, '
                  'message={message}, '
                  'Date={Date}, '

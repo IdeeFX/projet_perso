@@ -39,7 +39,7 @@ def get_logger():
     setup_logging()
     # TODO : create a launcher handler in logging
     logger = logging.getLogger(__name__)
-    logger.debug("Logging configuration set up in %s", __name__)
+    logger.debug("Logging configuration set up for %s", __name__)
     return logger
 
 def launch(launch_logger=None, debug=True):

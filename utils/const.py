@@ -68,11 +68,13 @@ env = namedtuple("ENV", ["debug",
                          "log_settings",
                          "trash",
                          "port",
-                         "soap_url"])
+                         "soap_url",
+                         "test_sftp"])
 
 ENV = env(debug = "MFSERV_HARNESS_DEBUG",
           settings = "MFSERV_HARNESS_SETTINGS",
           log_settings = "MFSERV_HARNESS_LOG_SETTINGS",
           trash = "MFSERV_HARNESS_TRASH",
           port = "MFSERV_NGINX_PORT",
-          soap_url = "MFSERV_HARNESS_SOAP_ADRESS")
+          soap_url = "MFSERV_HARNESS_SOAP_ADRESS",
+          test_sftp= "MFSERV_HARNESS_TEST_SFTP")

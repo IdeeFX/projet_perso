@@ -78,7 +78,7 @@ class Notification():
         LOGGER.debug("Attempting to write {file}".format(file=request_file))
         with open(request_file, "w") as file_:
             json.dump(request_dump, file_, indent=4)
-        LOGGER.debug("Successfully wrote {file}".format(file=request_file))
+        LOGGER.info("Successfully wrote instruction file %s ", request_file)
 
     def compile_request(self):
 
@@ -138,7 +138,7 @@ class Notification():
                          "into database.", REQ_STATUS.ongoing)
             status = REQ_STATUS.ongoing
         # TODO get rid of general exception
-        except Exception:
+        except Exception as exc:
             LOGGER.exception("Error during notification processing. "
                              "Dissemination failed.")
             status = self.commit_failure(database, diff_id)

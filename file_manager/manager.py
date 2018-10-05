@@ -34,11 +34,8 @@ except ValueError:
     TEST_SFTP = False
 
 # initialize LOGGER
-setup_logging()
 LOGGER = logging.getLogger(__name__)
-LOGGER.debug("Logging configuration set up in %s", __name__)
-
-LOGGER.info("File Manager setup complete")
+LOGGER.debug("Logging configuration set up for %s", __name__)
 
 class FileOverSizeLimit(Exception):
     pass
@@ -131,7 +128,7 @@ class FileManager:
             request_id_list = [item for item in request_id_list
                                 if item in diss_instructions.keys()]
 
-            LOGGER.debug("Processing downloaded file %s linked to "
+            LOGGER.info("Processing downloaded file %s linked to "
                         "requests %s", file_path, request_id_list)
 
             diff_manager = DiffMetManager(request_id_list,
@@ -287,7 +284,8 @@ class FileManager:
                 else:
                     shutil.move(file_to_process, cls.dir_a)
             else:
-                msg = "Instruction file processed"
+                msg = "Instruction file %s processed" % file_to_process
+                LOGGER.info(msg)
                 Database.update_field_by_query("message", msg,
                                 **dict(fullrequestId=full_id))
 
@@ -371,7 +369,9 @@ class ConnectionPointer:
                 self.update_filename(item)
                 files_fetched.append(file_path)
             fetch_ok = True
-        elif self.hostname == "localhost" and not os.path.isdir(dir_path):
+        elif self.hostname == "localhost" and \
+             not os.path.isdir(dir_path) and \
+             not TEST_SFTP:
             msg = ("Staging post path %s is not a directory. "
                    "Dissemination failed" % dir_path)
             LOGGER.error(msg)
@@ -442,7 +442,6 @@ class ConnectionPointer:
             if DEBUG:
                 pool = DebugSettingsManager.sftp_pool(processes=nb_workers)
             else:
-
                 pool = multiprocessing.Pool(processes=nb_workers)
             results = pool.starmap_async(self._sftp_file, files_to_sftp)
 
@@ -490,7 +489,6 @@ class ConnectionPointer:
             Database.update_field_by_query("message", msg,
                                 **dict(fullrequestId=self.req_id))
             sftp_success = False
-
 
         # update database
         files_downloaded = self.update(sftp_success, files_to_sftp)
@@ -643,10 +641,10 @@ class DiffMetManager:
 
         with tarfile.open(archive_path, "w:gz") as tar:
             tar.add(instr_file_path, arcname=os.path.basename(instr_file_path))
-            LOGGER.debug("Compressed diffmet instruction file %s in %s.",
+            LOGGER.info("Compressed diffmet instruction file %s in %s.",
                         instr_file_path, archive_path)
             tar.add(self.new_file_path, arcname=os.path.basename(self.new_file_path))
-            LOGGER.debug("Compressed dissemination file %s in %s.",
+            LOGGER.info("Compressed dissemination file %s in %s.",
                         self.new_file_path, archive_path)
 
 
@@ -848,7 +846,7 @@ if __name__ == '__main__':
     setup_logging()
     LOGGER = logging.getLogger("file_manager.manager")
     # TODO "Logging configuration set up" what does that even mean ?
-    LOGGER.debug("Logging configuration set up in %s", "file_manager.manager")
+    LOGGER.debug("Logging configuration set up for %s", "file_manager.manager")
 
     LOGGER.info("File Manager setup complete")
     FileManager.process(max_loops)

@@ -84,6 +84,16 @@ handlers:
         backupCount: 20
         encoding: utf8
 
+
+    connections_handler:
+        class: logging.handlers.RotatingFileHandler
+        level: INFO
+        formatter: simple
+        filename: /tmp/connections.log
+        maxBytes: 10485760 # 10MB
+        backupCount: 20
+        encoding: utf8
+
 loggers:
     file_manager.manager:
         level: DEBUG
@@ -123,6 +133,11 @@ loggers:
     webservice.server.application:
         level: DEBUG
         handlers: [server_file_handler, info_file_handler, error_file_handler]
+        propagate: no
+
+    paramiko.transport:
+        level: INFO
+        handlers: [manager_file_handler, connections_handler]
         propagate: no
 
 root:

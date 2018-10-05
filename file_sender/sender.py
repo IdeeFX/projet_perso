@@ -21,11 +21,8 @@ from webservice.server.application import APP
 
 
 # initialize LOGGER
-setup_logging()
 LOGGER = logging.getLogger(__name__)
-LOGGER.debug("Logging configuration set up in %s", __name__)
-
-LOGGER.info("Sender setup complete")
+LOGGER.debug("Logging configuration set up for %s", __name__)
 
 try:
     DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
@@ -351,7 +348,7 @@ if __name__ == '__main__':
     # initialize LOGGER
     setup_logging()
     LOGGER = logging.getLogger("file_sender.sender")
-    LOGGER.debug("Logging configuration set up in %s", "file_sender.sender")
+    LOGGER.debug("Logging configuration set up for %s", "file_sender.sender")
 
     LOGGER.info("Sender setup complete")
     DifmetSender.process(max_loops)

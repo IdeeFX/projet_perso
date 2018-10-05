@@ -20,13 +20,10 @@ from webservice.server.application import APP
 
 
 # initialize LOGGER
-setup_logging()
 LOGGER = logging.getLogger(__name__)
 LOGGER_ACK = logging.getLogger("difmet_ack_messages")
 LOGGER_ALARM =   logging.getLogger("difmet_alarm_messages")
-LOGGER.debug("Logging configuration set up in %s", __name__)
-
-LOGGER.info("Ack Receiver setup complete")
+LOGGER.debug("Logging configuration set up for %s", __name__)
 # TODO move environment variables into utils.const
 try:
     DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
@@ -275,7 +272,7 @@ if __name__ == '__main__':
     # initialize LOGGER
     setup_logging()
     LOGGER = logging.getLogger("ack_receiver.ack_receiver")
-    LOGGER.debug("Logging configuration set up in %s", "ack_receiver.ack_receiver")
+    LOGGER.debug("Logging configuration set up for %s", "ack_receiver.ack_receiver")
 
     LOGGER.info("File Manager setup complete")
     AckReceiver.process(max_loops)
