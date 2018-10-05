@@ -2,6 +2,7 @@ import os
 from os.path import join
 import logging.config
 import yaml
+import tempfile
 from tempfile import gettempdir
 from distutils.util import strtobool
 from settings.settings_manager import SettingsManager
@@ -9,7 +10,7 @@ from utils.const import ENV
 
 SETUP_DIR = os.path.dirname(__file__)
 
-DEFAULT_PATH = os.environ.get(ENV.log_settings) or join(SETUP_DIR, '../settings/logging.yaml')
+DEFAULT_PATH = os.environ.get(ENV.log_settings) or join(SETUP_DIR, '../settings/settings_logging.yaml')
 
 try:
     DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
@@ -36,6 +37,8 @@ def setup_logging(default_path=DEFAULT_PATH):
             config = yaml.safe_load(file_.read())
         # use harnaislogdir settings if it has been set.
         if DEBUG:
+            gettempdir()
+            tempfile.tempdir = None
             log_dir = join(gettempdir(), "harnais")
             dir_error_msg = ("Incorrect logdir value {v}. "
                             "It should be the path to a valid "

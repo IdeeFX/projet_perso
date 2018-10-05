@@ -7,6 +7,8 @@ import shutil
 import signal
 from subprocess import check_output, CalledProcessError
 from utils.const import RANDOM_ID_LENGTH, ENV
+from utils.const import DEFAULT_SETTINGS_PATH, ENV
+import yaml
 
 class Tools:
 
@@ -25,9 +27,12 @@ class Tools:
     @staticmethod
     def checksum_file(file_path):
 
-        with open(file_path, "rb") as file_:
-            content = file_.read()
-            checksum = hashlib.sha256(content).digest()[:16]
+        if os.path.isfile(file_path):
+            with open(file_path, "rb") as file_:
+                content = file_.read()
+                checksum = hashlib.sha256(content).digest()[:16]
+        else:
+            checksum=b"1"
 
         return checksum
 
@@ -107,3 +112,18 @@ class Incrementator:
         cls.idx += 1
 
         return incr
+
+
+# class TestTools:
+
+#     @staticmethod
+#     def duplicate_settings(dir_, dict_update):
+
+#         SettingsManager.load_settings()
+#         SettingsManager.update(dict_update, testing= True)
+
+#         os.environ[ENV.settings] = join(dir_, "settings_testing.yaml")
+
+#         with open(os.environ[ENV.settings], "w") as file_:
+#             yaml.dump(SettingsManager._parameters, file_)
+

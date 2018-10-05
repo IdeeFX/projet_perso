@@ -123,8 +123,10 @@ class SettingsManager:
     def reset(cls):
 
         for key in cls._parameters.keys():
-            cls._parameters[key] = None
+            cls._parameters[key] = getattr(DEFAULT_SETTINGS, key ,None)
         cls._loaded = False
+        cls._checksum = None
+        cls._settings_file = None
 
     @classmethod
     def get(cls, key, alt=None):
@@ -166,3 +168,8 @@ class DebugSettingsManager:
 
     sftp_pool = ThreadPool
     ftp_pool = ThreadPool
+
+    @classmethod
+    def reset(cls):
+        cls.sftp_pool = ThreadPool
+        cls.ftp_pool = ThreadPool

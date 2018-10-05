@@ -45,9 +45,6 @@ class SFTPserver:
 
 
         cls._stagingpost = stagingpost
-        for i in range(10):
-            with open(join(stagingpost,"A_SNFR30LFPW270700_C_LFPW_20180927070000_%i.txt" % i),"w") as file_out:
-                file_out.write("truc")
 
         # os.chdir(gettempdir())
         os.chdir("/")
@@ -82,32 +79,6 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             SFTPserver.stop_server()
 
-
-# SFTPserver.create_server("/tmp/")
-
-# # pkey = paramiko.RSAKey.from_private_key_file('/tmp/openwis_sftp_key_test.key')
-# transport = paramiko.Transport(('localhost', 22))
-# # transport.connect(username='admin', password='admin', pkey=pkey)
-# transport.connect(username='admin', password='admin')
-# sftp = paramiko.SFTPClient.from_transport(transport)
-# print(sftp.listdir('.'))
-
-# SFTPserver.stop_server()
-
-#     # pkey = paramiko.RSAKey.from_private_key_file('/tmp/openwis_sftp_key_test.key')
-#     ssh = paramiko.SSHClient()
-#     # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-#     connectiona_info = dict(hostname = 'localhost', port=3373, username='admin',
-#                             # password='admin', pkey=pkey)
-#                             password='admin')
-#     # >>> import paramiko
-#     pkey = paramiko.RSAKey.from_private_key_file('/tmp/openwis_sftp_key_test.key')
-#     transport = paramiko.Transport(('localhost', 3373))
-#     transport.connect(username='admin', password='admin', pkey=pkey)
-#     sftp = paramiko.SFTPClient.from_transport(transport)
-#     print(sftp.listdir('.'))
-
-# process.terminate()
 
 
 

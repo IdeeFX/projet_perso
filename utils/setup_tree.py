@@ -15,8 +15,8 @@ except ValueError:
 LOGGER = logging.getLogger(__name__)
 
 
-SettingsManager.load_settings()
-LOGGER.debug("Settings loaded")
+# SettingsManager.load_settings()
+# LOGGER.debug("Settings loaded")
 
 class HarnessTree:
 
@@ -55,6 +55,8 @@ class HarnessTree:
             return dir_path
 
         if DEBUG:
+            tempfile.gettempdir()
+            tempfile.tempdir = None
             harnais_dir = os.path.join(tempfile.gettempdir(), "harnais")
         else:
             harnais_dir = SettingsManager.get("harnaisDir")

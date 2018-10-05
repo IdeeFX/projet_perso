@@ -3,12 +3,14 @@ import os
 from os.path import join
 from validation.mock_server.openwis_sftp import SFTPserver
 from zeep import Client
-# from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from threading import Thread
+import unittest
+import yaml
 from time import sleep
 from shutil import rmtree
 from distutils.util import strtobool
-from tempfile import TemporaryDirectory, gettempdir
+import tempfile
+from tempfile import mkdtemp, gettempdir
 from validation.mock_server.soap_server import SoapServer
 from validation.mock_server.difmet_ftp import FTPserver
 from file_manager.manager import FileManager
@@ -22,82 +24,90 @@ from webservice.server.application import APP
 from utils.const import PORT, ENV
 from utils.tools import Tools
 from utils.database import Database
+from utils.log_setup import setup_logging
 
-os.environ[ENV.debug] = "False"
-# DebugSettingsManager.sftp_pool = Pool
-# DebugSettingsManager.ftp_pool = Pool
+        # os.environ[ENV.debug] = "False"
+        # # DebugSettingsManager.sftp_pool = Pool
+        # # DebugSettingsManager.ftp_pool = Pool
 
+class CompleteTest(unittest.TestCase):
 
+    def setUp(self):
 
-try:
-    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
-except ValueError:
-    DEBUG = False
+        os.environ[ENV.test_sftp] = "True"
+        os.environ[ENV.debug] = "True"
 
-def clear_dir(dir_):
-    for item in os.listdir(dir_):
-        os.remove(join(dir_, item))
-
-def test_harnais_complet():
-
-    harnais_dir = join(gettempdir(), "harnais")
-
-    if os.path.isdir(harnais_dir):
-        rmtree(harnais_dir)
+        self.tmpdir  = mkdtemp(prefix='harnais_')
+        harnais_dir = join(self.tmpdir, "harnais")
         os.mkdir(harnais_dir)
-    else:
-        os.mkdir(harnais_dir)
+        os.environ["TMPDIR"] = self.tmpdir
+        self.staging_post = join(self.tmpdir, "staging_post")
+        os.mkdir(self.staging_post)
+        self.difmet_deposit = join(self.tmpdir, "difmet_deposit")
+        os.mkdir(self.difmet_deposit)
+        self.ack_dir = join(self.tmpdir, "ack_dir")
+        os.mkdir(self.ack_dir)
 
-    SettingsManager.load_settings()
-    SettingsManager.update(dict(harnaisLogdir=harnais_dir,
-                                harnaisDir=harnais_dir,
-                                harnaisAckDir=harnais_dir
-                                ),
-                           testing=True)
-
-
-
-    Tools.clear_trash_can()
-    Database.initialize_database(APP)
-    Database.refresh(**{"seconds":0})
-    #clear files
-    dir_a = HarnessTree.get("temp_dissRequest_A")
-    dir_b = HarnessTree.get("temp_dissRequest_B")
-    dir_c = HarnessTree.get("temp_dissRequest_C")
+        # create files on staging post
+        for i in range(10):
+            with open(join(self.staging_post,"A_SNFR30LFPW270700_C_LFPW_20180927070000_%i.txt" % i),"w") as file_out:
+                file_out.write("Dummy staging post test file")
 
 
 
-    for dir_ in [dir_a,dir_b,dir_c]:
-        clear_dir(dir_)
+        self.hostname = hostname = socket.gethostname()
+        port = os.environ.get(ENV.port) or PORT
+        os.environ[ENV.soap_url] = ('http://{hostname}:{port}/harnais-diss-v2/'
+                                    'webservice/Dissemination?wsdl'.format(hostname=hostname,
+                                    port=port))
 
-    SoapServer.create_server()
+        SettingsManager.load_settings()
+        SettingsManager.update(dict(harnaisLogdir=harnais_dir,
+                                    harnaisDir=harnais_dir,
+                                    harnaisAckDir=self.ack_dir,
+                                    openwisStagingPath=gettempdir(),
+                                    openwisHost="localhost",
+                                    openwisSftpUser="admin",
+                                    openwisSftpPassword="admin",
+                                    openwisSftpPort = 3373,
+                                    processFileIdle = 10,
+                                    dissHost="0.0." + "0.0",
+                                    dissFtpUser="user",
+                                    dissFtpPasswd="12345",
+                                    dissFtpDir=self.difmet_deposit,
+                                    dissFtpMode=None,
+                                    dissFtpPort=2121,
+                                    sendFTPlimitConn=5),
+                               testing=True)
 
-    hostname = socket.gethostname()
-    port = os.environ.get(ENV.port) or PORT
-    client = Client('http://{hostname}:{port}/harnais-diss-v2/'
-                    'webservice/Dissemination?wsdl'.format(hostname=hostname,
-                                                        port=port))
-    #client = Client('http://wisauth-int-p.meteo.fr:8080/harnais-diss-v2/webservice/Dissemination?wsdl')
-    factory = client.type_factory('http://dissemination.harness.openwis.org/')
+        os.environ[ENV.settings] = join(self.tmpdir, "settings_testing.yaml")
 
-    testDiffusion = factory.MailDiffusion(address="dummy@dummy.com",
-                                            headerLine="dummyHeaderLine",
-                                            subject= "dummySubject",
-                                            dispatchMode = "TO",
-                                            attachmentMode="AS_ATTACHMENT")
-    info = factory.DisseminationInfo(priority=5,SLA=6,dataPolicy="dummyDataPolicy", diffusion=testDiffusion)
-    with TemporaryDirectory(prefix="harnais_") as stagingpost:
-        print(stagingpost)
-        result1 = client.service.disseminate(requestId="123456", fileURI=stagingpost, disseminationInfo=info)
-        result2 = client.service.disseminate(requestId="654321", fileURI=stagingpost, disseminationInfo=info)
-        # result = client.service.disseminate(requestId="654321", fileURI=stagingpost, disseminationInfo=info)
+        with open(os.environ[ENV.settings], "w") as file_:
+            yaml.dump(SettingsManager._parameters, file_)
+
+        setup_logging()
+
+    def test_complet(self):
+        SoapServer.create_server()
+        client = Client(os.environ[ENV.soap_url])
+        factory = client.type_factory('http://dissemination.harness.openwis.org/')
+
+        test_diffusion = factory.MailDiffusion(address="dummy@dummy.com",
+                                                headerLine="dummyHeaderLine",
+                                                subject= "dummySubject",
+                                                dispatchMode = "TO",
+                                                attachmentMode="AS_ATTACHMENT")
+        info = factory.DisseminationInfo(priority=5,SLA=6,dataPolicy="dummyDataPolicy", diffusion=test_diffusion)
+
+        result1 = client.service.disseminate(requestId="123456", fileURI=self.staging_post, disseminationInfo=info)
+        result2 = client.service.disseminate(requestId="654321", fileURI=self.staging_post, disseminationInfo=info)
+
         print(result1)
         print(result2)
 
         SoapServer.stop_server()
 
-        #start sftp server
-        SFTPserver.create_server(stagingpost)
+        SFTPserver.create_server(self.staging_post)
         SettingsManager.update(dict(openwisStagingPath=gettempdir(),
                                     openwisHost="localhost",
                                     openwisSftpUser="admin",
@@ -106,57 +116,42 @@ def test_harnais_complet():
                                     openwisSftpPort = 3373
                                     ),
                                 testing=True)
-        DebugSettingsManager.sftp_pool = Pool
         thr = Thread(target=FileManager.process, kwargs={"max_loops":1})
-        thr.start()
 
         try:
+            thr.start()
             thr.join()
-            # thr.join()
-            # stopping file manager
-            FileManager.stop()
             SFTPserver.stop_server()
-            print("Manager success")
+            print("Manager finished")
         except KeyboardInterrupt:
             SFTPserver.stop_server()
-    sleep(10)
-    with TemporaryDirectory(prefix="diffmet_") as deposit:
+
+        sleep(10)
 
         Tools.kill_process("diffmet_test_ftp_server")
         FTPserver.create_server("/")
-        SettingsManager.update(dict(dissHost="0.0." + "0.0",
-                                    dissFtpUser="user",
-                                    dissFtpPasswd="12345",
-                                    dissFtpDir=deposit,
-                                    dissFtpMode=None,
-                                    dissFtpPort=2121,
-                                    sendFTPlimitConn=5
-                                    ),
-                                testing=True)
+
         thr = Thread(target=DifmetSender.process, kwargs={"max_loops":3})
 
         try:
             thr.start()
             thr.join()
-            # stopping file manager
-            DifmetSender.stop()
-            print("DifMet success")
+            print("DifMet finished")
         except KeyboardInterrupt:
             FTPserver.stop_server()
-    try:
-        req_id1 = "123456" + hostname
-        req_id2 = "654321" + hostname
-        ext_id1=Database.get_external_id("123456" + hostname)
-        ext_id2=Database.get_external_id("654321" + hostname)
-    except AttributeError:
-        req_id1 = "123456" + "localhost"
-        req_id2 = "654321" + "localhost"
-        ext_id1=Database.get_external_id("123456" + "localhost")
-        ext_id2=Database.get_external_id("654321" + "localhost")
 
-    with TemporaryDirectory(prefix="ack_") as ack_deposit:
+        try:
+            req_id1 = "123456" + self.hostname
+            req_id2 = "654321" + self.hostname
+            ext_id1=Database.get_external_id("123456" + self.hostname)
+            ext_id2=Database.get_external_id("654321" + self.hostname)
+        except AttributeError:
+            req_id1 = "123456" + "localhost"
+            req_id2 = "654321" + "localhost"
+            ext_id1=Database.get_external_id("123456" + "localhost")
+            ext_id2=Database.get_external_id("654321" + "localhost")
 
-        with open(join(ack_deposit, "ack_file.acqdifmet.xml"),"w") as file_:
+        with open(join(self.ack_dir, "ack_file.acqdifmet.xml"),"w") as file_:
             file_.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
                         "<acquittements>\n"
                         "<acquittement>\n"
@@ -191,31 +186,34 @@ def test_harnais_complet():
                         "</acquittement>\n"
                         "<acquittementnumber>2</acquittementnumber>\n"
                         "</acquittements>".format(ext_id1=ext_id1))
-        SettingsManager.update(dict(harnaisAckDir=ack_deposit),
-                                testing=True)
-        # HarnessTree.setter("dir_ack", ack_deposit, testing=True)
-        thr = Thread(target=AckReceiver.process, kwargs={"max_loops":2})
 
+        thr = Thread(target=AckReceiver.process, kwargs={"max_loops":2})
 
         thr.start()
         thr.join()
-        # stopping file manager
-        AckReceiver.stop()
-        print("Ack_receiver success")
+        print("Ack_receiver finished")
 
-    # check acquittement
-    SoapServer.create_server()
-    client = Client('http://{hostname}:{port}/harnais-diss-v2/'
-                    'webservice/Dissemination?wsdl'.format(hostname=hostname,
-                                                        port=port))
-    factory = client.type_factory('http://dissemination.harness.openwis.org/')
-    result = client.service.monitorDissemination(requestId=req_id1)
-    print(result)
-    result = client.service.monitorDissemination(requestId=req_id2)
-    print(result)
-    SoapServer.stop_server()
+        # check acquittement
+        SoapServer.create_server()
+        client = Client(os.environ[ENV.soap_url])
+        factory = client.type_factory('http://dissemination.harness.openwis.org/')
+        result = client.service.monitorDissemination(requestId=req_id1)
+        print(result)
+        result = client.service.monitorDissemination(requestId=req_id2)
+        print(result)
+        SoapServer.stop_server()
 
-    print("fin")
+        print("fin")
+
+    def tearDown(self):
+        rmtree(self.tmpdir)
+        os.environ.pop(ENV.settings)
+        os.environ.pop("TMPDIR")
+        os.environ.pop(ENV.test_sftp)
+        os.environ.pop(ENV.debug)
+        tempfile.tempdir = None
+        Database.reset()
+        SettingsManager.reset()
 
 if __name__ == "__main__":
-    test_harnais_complet()
+    unittest.main()

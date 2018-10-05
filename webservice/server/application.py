@@ -14,29 +14,31 @@ from settings.settings_manager import SettingsManager
 from utils.const import PORT, ENV
 
 
-# TODO allow to pass into arguments a custom settings file
-SettingsManager.load_settings()
-
-# initialize LOGGER
-setup_logging()
 LOGGER = logging.getLogger(__name__)
-LOGGER.debug("Logging configuration set up in %s", __name__)
+LOGGER.debug("Logging configuration set up for %s", __name__)
 
-# setup repertory structure
-HarnessTree.setup_tree()
 
-DIRNAME = os.path.dirname(__file__)
+
 APP = Flask(__name__)
 # SOAP services are distinct wsgi applications so we are using middleware to bring all aps together
 APP.wsgi_app = DispatcherMiddleware(APP.wsgi_app, {
     '/harnais-diss-v2/webservice/Dissemination': wsgi_application
 })
+APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Setting up database
-Database.initialize_database(APP)
-LOGGER.info("setup complete")
+
+
 
 def main():
+    SettingsManager.load_settings()
+    # initialize LOGGER
+    setup_logging()
+    # setup repertory structure
+    HarnessTree.setup_tree()
+
+    # Setting up database
+    Database.initialize_database(APP)
+    LOGGER.info("setup complete")
     hostname = socket.gethostname()
     port = os.environ.get(ENV.port) or PORT
     LOGGER.warning("Starting application through Flask development server."
