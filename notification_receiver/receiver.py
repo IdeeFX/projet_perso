@@ -25,6 +25,10 @@ class Notification():
         self.request_file = ""
         self._diff_externalid = None
         self.hostname = self.get_hostname(client_ip)
+        #load settings, if it has not been done
+        if not SettingsManager.is_loaded():
+            SettingsManager.load_settings()
+            LOGGER.debug("Settings loaded")
         LOGGER.debug("Created a Notification object with id %s", req_id)
 
     @staticmethod
