@@ -19,7 +19,7 @@ class SoapServer:
 
             args =["python3", application.__file__]
             my_env = os.environ.copy()
-            my_env["PYTHONPATH"] = os.environ["PYTHONPATH"] + ":" + "/".join(webservice.__path__[0].split('/')[:-1])
+            my_env["PYTHONPATH"] = os.environ.get("PYTHONPATH","") + ":" + "/".join(webservice.__path__[0].split('/')[:-1])
             cls._process = subprocess.Popen(args, env=my_env)
             sleep(3)
             print("Soap server started")
