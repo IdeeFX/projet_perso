@@ -10,6 +10,10 @@ from utils.setup_tree import HarnessTree
 from utils.database import Database, Diffusion
 from utils.const import REQ_STATUS, PRIORITIES
 from utils.tools import Tools
+from utils.log_setup import setup_logging
+from utils.setup_tree import HarnessTree
+from webservice.server.application import APP
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +29,18 @@ class Notification():
         self.request_file = ""
         self._diff_externalid = None
         self.hostname = self.get_hostname(client_ip)
+        #load settings, if it has not been done
+        if not SettingsManager.is_loaded():
+            SettingsManager.load_settings()
+            # initialize LOGGER
+            setup_logging()
+            # setup repertory structure
+            HarnessTree.setup_tree()
+            # Setting up database
+            Database.initialize_database(APP)
+            LOGGER.debug("Setup complete")
+        
+        
         LOGGER.debug("Created a Notification object with id %s", req_id)
 
     @staticmethod

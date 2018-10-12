@@ -137,8 +137,12 @@ class TestSoapInterface(unittest.TestCase):
                                   'dummyHeaderLine',
                                   'address': 'dummy@dummy.com'}
                                   }
-
-        self.assertEqual(info_file, dict_ref)
+        test = info_file == dict_ref
+        if not test:
+            info_file.pop("hostname")
+            dict_ref.pop("hostname")
+        test = info_file == dict_ref
+        self.assertTrue(test)
 
     def tearDown(self):
         rmtree(self.tmpdir)
