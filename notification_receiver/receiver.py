@@ -12,7 +12,7 @@ from utils.const import REQ_STATUS, PRIORITIES
 from utils.tools import Tools
 from utils.log_setup import setup_logging
 from utils.setup_tree import HarnessTree
-from webservice.server.application import APP
+import webservice.server.application as application
 
 
 LOGGER = logging.getLogger(__name__)
@@ -36,9 +36,11 @@ class Notification():
             setup_logging()
             # setup repertory structure
             HarnessTree.setup_tree()
-            # Setting up database
-            Database.initialize_database(APP)
-            LOGGER.debug("Setup complete")
+
+        # Setting up database if necessary
+        if Database.get_database() is None:
+            Database.initialize_database(application.APP)
+            LOGGER.debug("Database setup")
         
         
         LOGGER.debug("Created a Notification object with id %s", req_id)
