@@ -265,6 +265,6 @@ def get_schema_node(self, pref):
 
     return schema
 
-XmlSchema.get_schema_node = get_schema_node
+# XmlSchema.get_schema_node = get_schema_node
 Wsdl11.add_bindings_for_methods = add_bindings_for_methods
-Wsdl11._add_port_to_service = _add_port_to_service
+# Wsdl11._add_port_to_service = _add_port_to_service

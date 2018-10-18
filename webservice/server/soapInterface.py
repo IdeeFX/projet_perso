@@ -80,9 +80,9 @@ class DisseminationInfo(ComplexModel):
 
 class DisseminationImplService(ServiceBase):
 
-    __port_types__ = ['Dissemination']
+    __port_types__ = ['DisseminationImplPort']
 
-    @rpc(Unicode, Unicode, DisseminationInfo, _soap_port_type='Dissemination', _returns=DisseminationStatus,
+    @rpc(Unicode, Unicode, DisseminationInfo, _soap_port_type='DisseminationImplPort', _returns=DisseminationStatus,
          _out_variable_name='disseminationResult')
     def disseminate(ctx, requestId, fileURI, disseminationInfo):
         # modify the namespace to comply with openwis client service
@@ -98,7 +98,7 @@ class DisseminationImplService(ServiceBase):
 
         return diss_resp
 
-    @rpc(Unicode, _returns=DisseminationStatus, _soap_port_type='Dissemination', _out_variable_name='disseminationStatus')
+    @rpc(Unicode, _returns=DisseminationStatus, _soap_port_type='DisseminationImplPort', _out_variable_name='disseminationStatus')
     def monitorDissemination(ctx, requestId):
         # modify the namespace to comply with openwis client service
         try:
