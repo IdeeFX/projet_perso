@@ -110,11 +110,13 @@ class Tools:
 
     @staticmethod
     def ack_decode(ack_string):
-        ack_string = ack_string.replace("&amp;", "&",)
-        ack_string = ack_string.replace("&lt;", "<",)
-        ack_string = ack_string.replace("&gt;", ">",)
-        ack_string = ack_string.replace("&apos;", "\'")
-        ack_string = ack_string.replace("&quot;", "\"")
+
+        if ack_string is not None:
+            ack_string = ack_string.replace("&amp;", "&",)
+            ack_string = ack_string.replace("&lt;", "<",)
+            ack_string = ack_string.replace("&gt;", ">",)
+            ack_string = ack_string.replace("&apos;", "\'")
+            ack_string = ack_string.replace("&quot;", "\"")
 
         return ack_string
 
