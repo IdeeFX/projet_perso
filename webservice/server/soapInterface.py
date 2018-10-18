@@ -130,7 +130,6 @@ application = Application(
 
 
 wsgi_application = WsgiApplication(application)
-# TODO url to set with variable env
 port = os.environ.get(ENV.port) or PORT
 hostname = socket.gethostname()
 url = ("http://{hostname}.meteo.fr:{port}/"

@@ -83,9 +83,8 @@ class CompleteTest(unittest.TestCase):
         os.environ[ENV.settings] = join(self.tmpdir, "settings_testing.yaml")
 
         with open(os.environ[ENV.settings], "w") as file_:
-            yaml.dump(SettingsManager._parameters, file_)
-
-        setup_logging()
+            yaml.dump(dict(SettingsManager._parameters), file_)
+        SettingsManager.reset()
 
     def test_complet(self):
         SoapServer.create_server()

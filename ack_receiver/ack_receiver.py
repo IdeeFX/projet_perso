@@ -24,7 +24,6 @@ LOGGER = logging.getLogger(__name__)
 LOGGER_ACK = logging.getLogger("difmet_ack_messages")
 LOGGER_ALARM =   logging.getLogger("difmet_alarm_messages")
 LOGGER.debug("Logging configuration set up for %s", __name__)
-# TODO move environment variables into utils.const
 try:
     DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
 except ValueError:
@@ -44,8 +43,7 @@ class AckReceiver:
             counter += 1
             cls.signal_loop(counter)
             cls.load_settings()
-            # TODO check default value
-            idle_time = SettingsManager.get("sendFTPIdle") or 10
+            idle_time = SettingsManager.get("ackProcessIdle")
             sleep(idle_time)
             cls.dir_ack = dir_ack = HarnessTree.get("dir_ack")
 
@@ -141,7 +139,7 @@ class AckReceiver:
             msg_list = ["diffusion_externalid = %s" % diff_external_id]
 
             for key in keys:
-                val = alarm.findtext(key)
+                val = Tools.ack_decode(alarm.findtext(key))
                 msg_list.append('{k} : {v}'.format(k=key,v=val))
 
             alarm_msg = msg_list[0] + "\n".join(msg_list)
@@ -162,8 +160,6 @@ class AckReceiver:
         req_id = None
 
         for ack in root.findall("acquittement"):
-            #TODO que signifie "quand il est présent" ?
-            # TODO check if it should be the fullrequestId or diff_externalid
             diff_external_id = ack.findtext("diffusion_externalid")
             dtb_key = dict(diff_externalid=diff_external_id)
             prod_id = ack.findtext("productid")
@@ -201,7 +197,7 @@ class AckReceiver:
                         "diffusion_externalid = %s" % diff_external_id,
                         ]
             for key in keys:
-                val = ack.findtext(key)
+                val = Tools.ack_decode(ack.findtext(key))
                 msg_list.append('{k} : {v}'.format(k=key,v=val))
             ack_msg = "\n".join(msg_list)
             LOGGER_ACK.debug("Ack message is : \n%s", ack_msg)

@@ -96,6 +96,27 @@ class Tools:
                 os.remove(os.path.join(rep, file_))
 
 
+    @staticmethod
+    def ack_str(ack_string):
+
+        ack_string = ack_string.replace("&","&amp;")
+        ack_string = ack_string.replace("<","&lt;")
+        ack_string = ack_string.replace(">","&gt;")
+        ack_string = ack_string.replace("\'","&apos;")
+        ack_string = ack_string.replace("\"","&quot;")
+
+        return ack_string
+
+    @staticmethod
+    def ack_decode(ack_string):
+        ack_string = ack_string.replace("&amp;", "&",)
+        ack_string = ack_string.replace("&lt;", "<",)
+        ack_string = ack_string.replace("&gt;", ">",)
+        ack_string = ack_string.replace("&apos;", "\'")
+        ack_string = ack_string.replace("&quot;", "\"")
+
+        return ack_string
+
 class Incrementator:
     idx = 0
 

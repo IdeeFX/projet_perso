@@ -67,6 +67,10 @@ class Database():
 
     @classmethod
     def get_app(cls):
+        if not SettingsManager.is_loaded():
+            SettingsManager.load_settings()
+            LOGGER.info("Settings loaded")
+
         if DEBUG:
             gettempdir()
             tempfile.tempdir = None

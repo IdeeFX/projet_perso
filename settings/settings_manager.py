@@ -26,39 +26,7 @@ def compact_dict(in_dict, prefix="", exceptions=[]):
 
 class SettingsManager:
 
-    _parameters = dict(harnaisLogdir=None,
-                       harnaisDir=None,
-                       harnaisAckDir=None,
-                       harnaisSynchro=None,
-                       openwisHost=None,
-                       openwisSftpUser=None,
-                       openwisSftpPassword=None,
-                       openwisSftpPort=None,
-                       openwisStagingPath=None,
-                       dissHost=None,
-                       dissFtpUser=None,
-                       dissFtpPasswd=None,
-                       dissFtpDir=None,
-                       dissFtpMode=None,
-                       dissFtpPort=None,
-                       soapPort=None,
-                       processFileIdle=None,
-                       processFileDPmax=None,
-                       getSFTPlimitConn = DEFAULT_SETTINGS.getSFTPlimitConn,
-                       processFilesize=None,
-                       keepFileTime=None,
-                       keepFileTimeSender=None,
-                       ManagerOverflow = None,
-                       SenderOverflow = None,
-                       bandwidth=None,
-                       tmpregex=None,
-                       sla=None,
-                       delAck=DEFAULT_SETTINGS.delAck,
-                       delfaultPriority=None,
-                       diffFileName=DEFAULT_SETTINGS.diffFileName,
-                       fileEndLive=DEFAULT_SETTINGS.fileEndLive,
-                       sendFTPIdle=None,
-                       sendFTPlimitConn=DEFAULT_SETTINGS.sendFTPlimitConn)
+    _parameters = DEFAULT_SETTINGS._asdict()
     _loaded = False
     _checksum = None
     _settings_file = None

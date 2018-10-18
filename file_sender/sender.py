@@ -53,7 +53,7 @@ class DifmetSender:
             cls.update_workers()
             # idle time
             # TODO check default value
-            idle_time = SettingsManager.get("sendFTPIdle") or 10
+            idle_time = SettingsManager.get("sendFTPIdle")
             sleep(idle_time)
 
             # get settings

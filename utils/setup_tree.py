@@ -91,6 +91,10 @@ class HarnessTree:
 
     @classmethod
     def get(cls, key):
+        if not SettingsManager.is_loaded():
+            SettingsManager.load_settings()
+            LOGGER.info("Settings loaded")
+
         #check if settings have been modified
         if SettingsManager.get_checksum() != cls._checksum:
             LOGGER.info("Settings have been modified")
