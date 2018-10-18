@@ -8,3 +8,6 @@ pylintrc
 sonar*
 .sonar*
 report-task.txt
+build/
+dist/
+harnais_diss_v.egg-info/
