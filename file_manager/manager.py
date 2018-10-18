@@ -77,7 +77,7 @@ class FileManager:
                 if instr_to_process:
                     LOGGER.debug("No instruction file to process, moving on.")
                     instr_to_process = False
-                loop_time = time() - start_time()
+                loop_time = time() - start_time
                 continue
             else:
                 LOGGER.debug("Fetched %i instruction files from %s",
@@ -108,7 +108,7 @@ class FileManager:
 
             cls.check_end_loop(counter, max_loops)
 
-            loop_time = time() - start_time()
+            loop_time = time() - start_time
 
     @staticmethod
     def package_data(all_files_fetched, diss_instructions):
