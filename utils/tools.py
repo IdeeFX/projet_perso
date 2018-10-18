@@ -98,6 +98,8 @@ class Tools:
     @staticmethod
     def ack_str(ack_string):
 
+        ack_string = str(ack_string)
+
         ack_string = ack_string.replace("&","&amp;")
         ack_string = ack_string.replace("<","&lt;")
         ack_string = ack_string.replace(">","&gt;")
