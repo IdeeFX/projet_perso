@@ -5,6 +5,8 @@
 pylintrc
 *.sonarlint
 .coverage*
-sonar*
-.sonar*
 report-task.txt
+.sonar_lock
+build/
+dist/
+harnais_diss_v.egg-info/

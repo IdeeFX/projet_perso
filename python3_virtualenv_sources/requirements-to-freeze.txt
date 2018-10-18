@@ -1,14 +1,15 @@
 
 # python3 requirements.txt file
 # see https://pip.readthedocs.io/en/1.1/requirements.html
-flask
-spyne
-lxml
-setproctitle
-sftpserver
-pyftpdlib
-pyOpenSSL
-pytest
-zeep
-paramiko
-flask_sqlalchemy
+flask>=1.0.2
+spyne==2.12.14
+lxml>=3.6.0
+setproctitle>=1.1.10
+sftpserver>=0.3
+pyftpdlib>=1.5.4
+pyOpenSSL>=16.0.0
+pytest>=3.8.0
+pytest-cov>=2.6.0
+zeep>=3.0.0
+paramiko>=2.0.0
+flask_sqlalchemy>=2.3.2

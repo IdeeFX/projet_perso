@@ -12,7 +12,7 @@ from utils.const import REQ_STATUS, PRIORITIES
 from utils.tools import Tools
 from utils.log_setup import setup_logging
 from utils.setup_tree import HarnessTree
-import webservice.server.application as application
+
 
 
 LOGGER = logging.getLogger(__name__)
@@ -39,10 +39,11 @@ class Notification():
 
         # Setting up database if necessary
         if Database.get_database() is None:
-            Database.initialize_database(application.APP)
+            from webservice.server.application import APP
+            Database.initialize_database(APP)
             LOGGER.debug("Database setup")
-        
-        
+
+
         LOGGER.debug("Created a Notification object with id %s", req_id)
 
     @staticmethod
@@ -81,8 +82,6 @@ class Notification():
 
         self.request_file = request_file = os.path.join(out_dir, request_file)
 
-        # TODO add the rest of the openwis info
-        # TODO add sanity check
         request_dump = dict(date=rec_dict["date_reception"],
                             hostname=self.hostname,
                             diffpriority=priority,
@@ -155,7 +154,6 @@ class Notification():
             LOGGER.debug("Committed %s dissemination status "
                          "into database.", REQ_STATUS.ongoing)
             status = REQ_STATUS.ongoing
-        # TODO get rid of general exception
         except Exception as exc:
             LOGGER.exception("Error during notification processing. "
                              "Dissemination failed.")
@@ -193,8 +191,6 @@ class Notification():
             LOGGER.exception("Couldn't get hostname from ip %s, "
                              "using ip as hostname instead.", client_ip)
             hostname = client_ip
-
-        # TODO check hostname length for overflow
 
         return hostname
 

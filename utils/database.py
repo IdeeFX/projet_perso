@@ -67,6 +67,10 @@ class Database():
 
     @classmethod
     def get_app(cls):
+        if not SettingsManager.is_loaded():
+            SettingsManager.load_settings()
+            LOGGER.info("Settings loaded")
+
         if DEBUG:
             gettempdir()
             tempfile.tempdir = None
@@ -91,16 +95,12 @@ class Database():
     @classmethod
     def update_field_by_query(cls, fieldname, value, **kwargs):
 
-        # TODO refresh is only performed for this query. Look into making
-        # it a decorator
         # check if a refresh is necessary
         limit_format = dict(seconds=SettingsManager.get("delAck")*3600)
         limit = timedelta(**limit_format)
         if cls._last_refresh is None or (datetime.now() - cls._last_refresh) > limit:
             cls.refresh(**limit_format)
 
-
-        # records = session.query(Diffusion).filter(Diffusion.fullrequestId = req_id + hostname).all()
         with cls.get_app().app_context():
             records = Diffusion.query.filter_by(**kwargs).all()
 
@@ -156,8 +156,6 @@ class Database():
     @classmethod
     def get_id_by_query(cls, **kwargs):
 
-        # records = session.query(Diffusion).filter(Diffusion.fullrequestId = req_id + hostname).all()
-        # TODO test if none
         with cls.get_app().app_context():
             record = Diffusion.query.filter_by(**kwargs).first()
         if record is not None:

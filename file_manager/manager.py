@@ -19,7 +19,7 @@ from utils.log_setup import setup_logging
 from utils.setup_tree import HarnessTree
 from utils.database import Database, Diffusion
 from utils.const import (REQ_STATUS, TIMEOUT_BUFFER, DEBUG_TIMEOUT, TIMEOUT,
-                        PRIORITIES, MAX_REGEX, DEFAULT_ATTACHMENT_NAME, ENV)
+                        PRIORITIES, MAX_REGEX, ENV)
 from utils.tools import Tools, Incrementator
 from webservice.server.application import APP
 
@@ -51,6 +51,7 @@ class FileManager:
         counter = 0
         instr_to_process = False
         cls.setup_process()
+        loop_time = 0
         while cls._running:
             counter +=1
 
@@ -60,16 +61,15 @@ class FileManager:
             cls.dir_a = dir_a = HarnessTree.get("temp_dissRequest_A")
             cls.dir_b = dir_b = HarnessTree.get("temp_dissRequest_B")
             cls.dir_c = HarnessTree.get("temp_dissRequest_C")
-            # TODO implémenter bypass de 8.1
             start_time = time()
             # idle time
-            # TODO check default value
-            idle_time = SettingsManager.get("processFileIdle") or 10
-            sleep(idle_time)
+            idle_time = SettingsManager.get("processFileIdle")
+            # if a loop lasted longer than the idle time, idle time is bypassed.
+            if not loop_time > idle_time:
+                sleep(idle_time)
 
             # get the maxDirectiveFile first files
-            # TODO check default value
-            max_direc_files = SettingsManager.get("processFileDPmax") or 10
+            max_direc_files = SettingsManager.get("processFileDPmax")
             list_files_a = cls.get_file_list(dir_a, maxfiles=max_direc_files)
             instruction_files = cls.move_files(list_files_a, dir_b)
 
@@ -77,6 +77,7 @@ class FileManager:
                 if instr_to_process:
                     LOGGER.debug("No instruction file to process, moving on.")
                     instr_to_process = False
+                loop_time = time() - start_time
                 continue
             else:
                 LOGGER.debug("Fetched %i instruction files from %s",
@@ -106,6 +107,8 @@ class FileManager:
             cls.clear_orphan_files(dir_b)
 
             cls.check_end_loop(counter, max_loops)
+
+            loop_time = time() - start_time
 
     @staticmethod
     def package_data(all_files_fetched, diss_instructions):
@@ -348,7 +351,6 @@ class ConnectionPointer:
         destination_dir = HarnessTree.get("temp_dissRequest_B")
 
         # move the file if hostname is localhost. Sftp it otherwise
-        # TODO prendre en considération Harnessdiss.synchro en 8.5
         files_fetched = []
         if self.hostname == "localhost" and \
            os.path.isdir(dir_path) and \
@@ -464,7 +466,6 @@ class ConnectionPointer:
 
             sftp.close()
 
-        # TODO exception when no staging post dir
         except (paramiko.SSHException,
                 paramiko.ssh_exception.NoValidConnectionsError):
             LOGGER.exception("Couldn't connect to %s", self.hostname)
@@ -728,46 +729,40 @@ class DiffMetManager:
 
         def ftp_to_xml(element,diff_info,prefix=""):
             etree.SubElement(element, prefix + "media").text="FTP"
-            etree.SubElement(element, prefix + "ftp_host").text = str(diff_info["host"])
-            etree.SubElement(element, prefix + "ftp_user").text = str(diff_info["user"])
-            etree.SubElement(element, prefix + "ftp_passwd").text = str(diff_info["password"])
-            etree.SubElement(element, prefix + "ftp_directory").text = str(diff_info["remotePath"])
+            etree.SubElement(element, prefix + "ftp_host").text = Tools.ack_str(diff_info["host"])
+            etree.SubElement(element, prefix + "ftp_user").text = Tools.ack_str(diff_info["user"])
+            etree.SubElement(element, prefix + "ftp_passwd").text = Tools.ack_str(diff_info["password"])
+            etree.SubElement(element, prefix + "ftp_directory").text = Tools.ack_str(diff_info["remotePath"])
             etree.SubElement(element, prefix + "ftp_use_size").text = bin_bool(diff_info["checkFileSize"])
             etree.SubElement(element, prefix + "ftp_passive").text = bin_bool(diff_info["passive"])
             etree.SubElement(element, prefix + "ftp_port").text = self._get_port_value(diff_info)
             etree.SubElement(element, prefix + "ftp_tmp_method").text = "NAME"
             if diff_info["fileName"] != "":
-                etree.SubElement(element, prefix + "ftp_final_file_name").text = str(diff_info["fileName"])
-                etree.SubElement(element, prefix + "ftp_tmp_file_name").text = str(diff_info["fileName"]+ ".tmp")
+                etree.SubElement(element, prefix + "ftp_final_file_name").text = Tools.ack_str(diff_info["fileName"])
+                etree.SubElement(element, prefix + "ftp_tmp_file_name").text = Tools.ack_str(diff_info["fileName"]+ ".tmp")
             elif self.original_filename == "tmp.zip":
-                etree.SubElement(element, prefix + "ftp_final_file_name").text = self.new_filename
-                etree.SubElement(element, prefix + "ftp_tmp_file_name").text = self.new_filename + ".tmp"
+                etree.SubElement(element, prefix + "ftp_final_file_name").text = Tools.ack_str(self.new_filename)
+                etree.SubElement(element, prefix + "ftp_tmp_file_name").text = Tools.ack_str(self.new_filename + ".tmp")
             else:
-                etree.SubElement(element, prefix + "ftp_final_file_name").text = self.original_filename
-                etree.SubElement(element, prefix + "ftp_tmp_file_name").text = self.original_filename + ".tmp"
-            # etree.SubElement(element, "switch_method_medias_ftp").text = "NTRY"
+                etree.SubElement(element, prefix + "ftp_final_file_name").text = Tools.ack_str(self.original_filename)
+                etree.SubElement(element, prefix + "ftp_tmp_file_name").text = Tools.ack_str(self.original_filename + ".tmp")
 
         def mail_to_xml(element,diff_info,prefix=""):
             etree.SubElement(element, prefix + "media").text = "EMAIL"
-            etree.SubElement(element, prefix + "email_adress").text = str(diff_info["address"])
-            #TODO check correspondance for BCC value
-            etree.SubElement(element, prefix + "email_to_cc").text = str(diff_info["dispatchMode"])
-            etree.SubElement(element, prefix + "email_subject").text = str(diff_info["subject"])
+            etree.SubElement(element, prefix + "email_adress").text = Tools.ack_str(diff_info["address"])
+            etree.SubElement(element, prefix + "email_to_cc").text = Tools.ack_str(diff_info["dispatchMode"])
+            etree.SubElement(element, prefix + "email_subject").text = Tools.ack_str(diff_info["subject"])
             etree.SubElement(element, prefix + "email_text_in_body").text = "0"
-            # etree.SubElement(element, prefix + "email_preamble").text = ""
             if diff_info["fileName"] != "":
-                etree.SubElement(element, prefix + "email_attached_file_name").text = str(diff_info["fileName"])
+                etree.SubElement(element, prefix + "email_attached_file_name").text = Tools.ack_str(diff_info["fileName"])
             else:
-                etree.SubElement(element, prefix + "email_attached_file_name").text = DEFAULT_ATTACHMENT_NAME
+                etree.SubElement(element, prefix + "email_attached_file_name").text = Tools.ack_str(SettingsManager.get("attachmentName"))
 
         if diff_info["DiffusionType"] == "FTP":
             ftp_to_xml(element, diff_info, prefix="")
         elif diff_info["DiffusionType"] == "EMAIL":
             mail_to_xml(element, diff_info, prefix="")
 
-
-
-    # TODO tostring method
     def _create_diffmet_instr(self):
 
         def get_prefix(diff):
@@ -790,11 +785,11 @@ class DiffMetManager:
 
         root = etree.Element("product_diffusion")
         product = etree.SubElement(root, "product")
-        etree.SubElement(product,"file_name").text = self.new_filename
-        etree.SubElement(product,"file_size").text = str(self._get_file_size())
-        etree.SubElement(product,"priority").text=str(self._get_priority())
-        etree.SubElement(product,"archive").text="0"
-        etree.SubElement(product,"end_to_live_date").text=self._get_end_date()
+        etree.SubElement(product,"file_name").text = Tools.ack_str(self.new_filename)
+        etree.SubElement(product,"file_size").text = Tools.ack_str(self._get_file_size())
+        etree.SubElement(product,"priority").text = Tools.ack_str(self._get_priority())
+        etree.SubElement(product,"archive").text = "0"
+        etree.SubElement(product,"end_to_live_date").text = Tools.ack_str(self._get_end_date())
 
         for req_id in self.id_list:
             diffusion = etree.SubElement(product,"diffusion")
@@ -810,6 +805,8 @@ class DiffMetManager:
                 prefix = get_prefix(altdiff)
                 self.diff_info_to_xml(diffusion,altdiff, prefix=prefix)
                 etree.SubElement(diffusion,"standby_media").text = altdiff["DiffusionType"]
+                if altdiff["DiffusionType"] == "FTP" and diff["DiffusionType"] == "FTP":
+                    etree.SubElement(diffusion, "switch_method_medias_ftp").text = "NTRY"
 
             etree.SubElement(diffusion,"standby_switch_try_number").text = "3"
 
@@ -845,7 +842,6 @@ if __name__ == '__main__':
     # initialize LOGGER
     setup_logging()
     LOGGER = logging.getLogger("file_manager.manager")
-    # TODO "Logging configuration set up" what does that even mean ?
     LOGGER.debug("Logging configuration set up for %s", "file_manager.manager")
 
     LOGGER.info("File Manager setup complete")

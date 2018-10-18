@@ -19,7 +19,6 @@ class Tools:
         rand = random.SystemRandom()
         char = string.ascii_letters + string.digits
         res = rand.choice(char)
-        # res += ''.join(rand.choice(char + "_,+\\.-") for _ in range(length-1))
         res += ''.join(rand.choice(char) for _ in range(length-1))
 
         return res
@@ -96,6 +95,31 @@ class Tools:
                 os.remove(os.path.join(rep, file_))
 
 
+    @staticmethod
+    def ack_str(ack_string):
+
+        ack_string = str(ack_string)
+
+        ack_string = ack_string.replace("&","&amp;")
+        ack_string = ack_string.replace("<","&lt;")
+        ack_string = ack_string.replace(">","&gt;")
+        ack_string = ack_string.replace("\'","&apos;")
+        ack_string = ack_string.replace("\"","&quot;")
+
+        return ack_string
+
+    @staticmethod
+    def ack_decode(ack_string):
+
+        if ack_string is not None:
+            ack_string = ack_string.replace("&amp;", "&",)
+            ack_string = ack_string.replace("&lt;", "<",)
+            ack_string = ack_string.replace("&gt;", ">",)
+            ack_string = ack_string.replace("&apos;", "\'")
+            ack_string = ack_string.replace("&quot;", "\"")
+
+        return ack_string
+
 class Incrementator:
     idx = 0
 
@@ -112,18 +136,3 @@ class Incrementator:
         cls.idx += 1
 
         return incr
-
-
-# class TestTools:
-
-#     @staticmethod
-#     def duplicate_settings(dir_, dict_update):
-
-#         SettingsManager.load_settings()
-#         SettingsManager.update(dict_update, testing= True)
-
-#         os.environ[ENV.settings] = join(dir_, "settings_testing.yaml")
-
-#         with open(os.environ[ENV.settings], "w") as file_:
-#             yaml.dump(SettingsManager._parameters, file_)
-

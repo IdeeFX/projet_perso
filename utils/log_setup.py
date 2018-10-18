@@ -36,22 +36,7 @@ def setup_logging(default_path=DEFAULT_PATH):
         with open(path, 'rt') as file_:
             config = yaml.safe_load(file_.read())
         # use harnaislogdir settings if it has been set.
-        if DEBUG:
-            gettempdir()
-            tempfile.tempdir = None
-            log_dir = join(gettempdir(), "harnais")
-            dir_error_msg = ("Incorrect logdir value {v}. "
-                            "It should be the path to a valid "
-                            "directory.".format(v=log_dir))
-            try:
-                os.mkdir(log_dir)
-            except (FileExistsError):
-                pass
-        else:
-            log_dir = SettingsManager.get("harnaisLogdir")
-            dir_error_msg = ("Incorrect logdir value {v} in settings_harnais.yaml. "
-                            "It should be the path to a valid "
-                            "directory.".format(v=log_dir))
+        log_dir, dir_error_msg = _get_logdir()
         if log_dir is not None:
             if os.path.isdir(log_dir):
                 change_log_dir(config, log_dir)
@@ -70,3 +55,23 @@ def setup_logging(default_path=DEFAULT_PATH):
         raise FileNotFoundError("Couldn't resolve logging configuration "
                                 "file path {f}".format(f=path))
 
+
+def _get_logdir():
+    if DEBUG:
+        gettempdir()
+        tempfile.tempdir = None
+        log_dir = join(gettempdir(), "harnais")
+        dir_error_msg = ("Incorrect logdir value {v}. "
+                        "It should be the path to a valid "
+                        "directory.".format(v=log_dir))
+        try:
+            os.mkdir(log_dir)
+        except (FileExistsError):
+            pass
+    else:
+        log_dir = SettingsManager.get("harnaisLogdir")
+        dir_error_msg = ("Incorrect logdir value {v} in settings_harnais.yaml. "
+                        "It should be the path to a valid "
+                        "directory.".format(v=log_dir))
+
+    return log_dir, dir_error_msg

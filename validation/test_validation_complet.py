@@ -26,9 +26,6 @@ from utils.tools import Tools
 from utils.database import Database
 from utils.log_setup import setup_logging
 
-        # os.environ[ENV.debug] = "False"
-        # # DebugSettingsManager.sftp_pool = Pool
-        # # DebugSettingsManager.ftp_pool = Pool
 
 class CompleteTest(unittest.TestCase):
 
@@ -83,9 +80,8 @@ class CompleteTest(unittest.TestCase):
         os.environ[ENV.settings] = join(self.tmpdir, "settings_testing.yaml")
 
         with open(os.environ[ENV.settings], "w") as file_:
-            yaml.dump(SettingsManager._parameters, file_)
-
-        setup_logging()
+            yaml.dump(dict(SettingsManager._parameters), file_)
+        SettingsManager.reset()
 
     def test_complet(self):
         SoapServer.create_server()
@@ -111,7 +107,6 @@ class CompleteTest(unittest.TestCase):
         SettingsManager.update(dict(openwisStagingPath=gettempdir(),
                                     openwisHost="localhost",
                                     openwisSftpUser="admin",
-                                    # openwisSftpUser="openwis",
                                     openwisSftpPassword="admin",
                                     openwisSftpPort = 3373
                                     ),

@@ -28,6 +28,8 @@ _out_header_msg_suffix = 'OutHeaderMsg'
     #         super(odict, self).__delitem__(self.__list[key])
     #     del self.__list[key]
 
+
+# fix for issue with missing transport tag in wsdl
 #see https://github.com/arskom/spyne/pull/573
 
 def add_bindings_for_methods(self, service, root, service_name,
@@ -228,43 +230,4 @@ def _add_callbacks(self, service, root, types, service_name, url):
 
 
 
-
-def _add_port_to_service(self, service, port_name, binding_name):
-    """ Builds a wsdl:port for a service and binding"""
-
-    pref_tns = self.interface.get_namespace_prefix(self.interface.tns)
-
-    wsdl_port = SubElement(service, WSDL11("port"))
-    if port_name == "Dissemination":
-        wsdl_port.set('name', "DisseminationImplPort")
-    else:
-        wsdl_port.set('name', port_name)
-    wsdl_port.set('binding', '%s:%s' % (pref_tns, binding_name))
-
-    addr = SubElement(wsdl_port, WSDL11_SOAP("address"))
-    addr.set('location', self.url)
-
-
-
-
-def get_schema_node(self, pref):
-    """Return schema node for the given namespace prefix."""
-
-    if not (pref in self.schema_dict):
-        schema = etree.Element(xml.XSD('schema'),
-                                                    nsmap=self.interface.nsmap)
-
-        schema.set("targetNamespace", self.interface.nsmap[pref])
-        schema.set("elementFormDefault", "unqualified")
-        # schema.set("elementFormDefault", "qualified")
-
-        self.schema_dict[pref] = schema
-
-    else:
-        schema = self.schema_dict[pref]
-
-    return schema
-
-XmlSchema.get_schema_node = get_schema_node
 Wsdl11.add_bindings_for_methods = add_bindings_for_methods
-Wsdl11._add_port_to_service = _add_port_to_service

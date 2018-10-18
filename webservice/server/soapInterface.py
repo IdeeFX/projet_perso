@@ -13,12 +13,6 @@ from utils.database import Database
 from utils.const import PORT, ENV
 
 
-# TODO move those class definitions in another file
-MailDispatchMode = Unicode(values=['TO', 'CC', 'BCC'])
-MailAttachmentMode = Unicode(values=['EMBEDDED_IN_BODY', 'AS_ATTACHMENT'])
-requestStatus = Unicode(
-    values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED'])
-
 LOGGER = logging.getLogger(__name__)
 
 class Diffusion(ComplexModel):
@@ -86,9 +80,9 @@ class DisseminationInfo(ComplexModel):
 
 class DisseminationImplService(ServiceBase):
 
-    __port_types__ = ['Dissemination']
+    __port_types__ = ['DisseminationImplPort']
 
-    @rpc(Unicode, Unicode, DisseminationInfo, _soap_port_type='Dissemination', _returns=DisseminationStatus,
+    @rpc(Unicode, Unicode, DisseminationInfo, _soap_port_type='DisseminationImplPort', _returns=DisseminationStatus,
          _out_variable_name='disseminationResult')
     def disseminate(ctx, requestId, fileURI, disseminationInfo):
         # modify the namespace to comply with openwis client service
@@ -104,7 +98,7 @@ class DisseminationImplService(ServiceBase):
 
         return diss_resp
 
-    @rpc(Unicode, _returns=DisseminationStatus, _soap_port_type='Dissemination', _out_variable_name='disseminationStatus')
+    @rpc(Unicode, _returns=DisseminationStatus, _soap_port_type='DisseminationImplPort', _out_variable_name='disseminationStatus')
     def monitorDissemination(ctx, requestId):
         # modify the namespace to comply with openwis client service
         try:
@@ -130,7 +124,6 @@ application = Application(
 
 
 wsgi_application = WsgiApplication(application)
-# TODO url to set with variable env
 port = os.environ.get(ENV.port) or PORT
 hostname = socket.gethostname()
 url = ("http://{hostname}.meteo.fr:{port}/"
