@@ -1,24 +1,24 @@
-import logging
-import shutil
-from multiprocessing.pool import Pool
-import multiprocessing
-from multiprocessing.dummy import Pool as ThreadPool
-from distutils.util import strtobool
 import argparse
-import traceback
+import logging
+import multiprocessing
 import os
-from os import listdir, rename
-from os.path import join, basename, splitext
-from time import sleep, time
-from setproctitle import setproctitle
+import shutil
+import traceback
+from distutils.util import strtobool
 from ftplib import FTP, error_perm
-from utils.setup_tree import HarnessTree
-from utils.log_setup import setup_logging
-from utils.const import TIMEOUT_BUFFER, ENV, TIMEOUT, DEBUG_TIMEOUT
-from utils.tools import Tools
-from settings.settings_manager import SettingsManager, DebugSettingsManager
-from webservice.server.application import APP
+from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing.pool import Pool
+from os import listdir, rename
+from os.path import basename, join, splitext
+from time import sleep, time
 
+from setproctitle import setproctitle
+from settings.settings_manager import DebugSettingsManager, SettingsManager
+from utils.const import DEBUG_TIMEOUT, ENV, TIMEOUT, TIMEOUT_BUFFER
+from utils.log_setup import setup_logging
+from utils.setup_tree import HarnessTree
+from utils.tools import Tools
+from webservice.server.application import APP
 
 # initialize LOGGER
 LOGGER = logging.getLogger(__name__)
@@ -52,7 +52,6 @@ class DifmetSender:
             cls.load_settings()
             cls.update_workers()
             # idle time
-            # TODO check default value
             idle_time = SettingsManager.get("sendFTPIdle")
             sleep(idle_time)
 
@@ -60,14 +59,7 @@ class DifmetSender:
             cls.dir_c = dir_c = HarnessTree.get("temp_dissRequest_C")
             cls.dir_d = dir_d = HarnessTree.get("temp_dissRequest_D")
             # move back any remaining file from D to C
-            for file_ in listdir(dir_d):
-                # move back every file except those who are still in transfer
-                if not splitext(file_)[1] == ".lock":
-                    try:
-                        shutil.move(join(dir_d, file_), dir_c)
-                    # to avoid concurrent issue
-                    except FileNotFoundError:
-                        pass
+            cls.move_back_files()
 
             # get files in C
             max_files = cls.nb_workers
@@ -86,18 +78,32 @@ class DifmetSender:
 
                 timeout= cls.compute_timeout(size, file_)
 
-                # TODO try to improve speed by connecting once and pass the FTP object.
-                # might not work though because of pickle issues in multiprocessing
-                # the timeout is managed at pool level, not individually
                 # start download
                 # renaming file to prevent any operation on it.
                 cls.lock_file(file_)
                 res = cls.pool.apply_async(cls.abortable_ftp,
                                             (cls.upload_file, file_),
                                             dict(timeout=timeout))
-            if counter == max_loops:
-                LOGGER.info("Performed required %i loops, exiting.", counter)
-                cls.stop()
+
+            cls.check_end_loop(counter, max_loops)
+
+
+    @classmethod
+    def move_back_files(cls):
+        for file_ in listdir(cls.dir_d):
+            # move back every file except those who are still in transfer
+            if not splitext(file_)[1] == ".lock":
+                try:
+                    shutil.move(join(cls.dir_d, file_), cls.dir_c)
+                # to avoid concurrent issue
+                except FileNotFoundError:
+                    pass
+
+    @classmethod
+    def check_end_loop(cls, counter, max_loops):
+        if counter == max_loops:
+            LOGGER.info("Performed required %i loops, exiting.", counter)
+            cls.stop()
 
     @staticmethod
     def get_pool_method():
@@ -224,23 +230,18 @@ class DifmetSender:
         hostname = SettingsManager.get("dissHost")
         user = SettingsManager.get("dissFtpUser")
         password = SettingsManager.get("dissFtpPasswd")
-        # TODO see the use of mode
-        #mode = SettingsManager.get("dissFtpMode")
         port = SettingsManager.get("dissFtpPort")
 
-        # try:
-        #     ftp = FTP(host=hostname,user=user,passwd=password)
-        #     ftp_connected = True
-        # #TODO introduce exceptions
-        # except error_perm:
-        #     ftp = FTP()
-        #     ftp.connect(hostname,port)
-        #     ftp.login(user,password)
-        #     ftp_connected = True
         try:
             ftp = FTP()
             ftp.connect(hostname,port)
             ftp.login(user,password)
+            if SettingsManager.get("dissFtpMode") == "active":
+                ftp.set_pasv(False)
+                LOGGER.debug("FTP mode set to active")
+            elif SettingsManager.get("dissFtpMode") == "passive":
+                ftp.set_pasv(True)
+                LOGGER.debug("FTP mode set to passive")
             ftp_connected = True
         except Exception as e:
             LOGGER.exception("Couldn't connect to %s", hostname)
@@ -250,10 +251,6 @@ class DifmetSender:
         return ftp_connected, ftp
 
 
-    # TODO issue with raising exception in abortable_ftp
-    # see this https://stackoverflow.com/questions/6728236/exception-thrown-in-multiprocessing-pool-not-detected
-    # and https://stackoverflow.com/questions/6126007/python-getting-a-traceback-from-a-multiprocessing-process/26096355#26096355
-    # for more info
     @classmethod
     def abortable_ftp(cls, func, *args, **kwargs):
         timeout = kwargs.get('timeout', None)
@@ -313,7 +310,6 @@ class DifmetSender:
         file_locked = file_ + ".lock"
         if connection_ok:
             ftpdir = SettingsManager.get("dissFtpDir")
-            # TODO dir existence check
             ftp.cwd(ftpdir)
             # renaming in tmp
             file_renamed = basename(file_) + ".tmp"

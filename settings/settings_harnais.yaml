@@ -1,6 +1,5 @@
 harnais:
   # Chemin (relatif?) du répertoire des logs
-  # TODO logdir nécessite redémarrage pour être pris en compte
   logdir: /tmp/harnais/
   # Repertoire principal du harnais
   dir: /tmp/harnais/
@@ -35,7 +34,8 @@ diss:
   ftpuser: tls_wis_harnais2_intg
   ftppasswd: $dif_harness
   ftpdir: adressed
-  ftpmode:
+  # ftpmode est soit à "active" ou "passive"
+  ftpmode: passive
   ftpport: 21
 # Temps en seconde d’attente avant le traitement des fichiers de directives temporaires.
 processFileIdle: 30

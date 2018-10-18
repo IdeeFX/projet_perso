@@ -19,7 +19,6 @@ class Tools:
         rand = random.SystemRandom()
         char = string.ascii_letters + string.digits
         res = rand.choice(char)
-        # res += ''.join(rand.choice(char + "_,+\\.-") for _ in range(length-1))
         res += ''.join(rand.choice(char) for _ in range(length-1))
 
         return res
@@ -133,18 +132,3 @@ class Incrementator:
         cls.idx += 1
 
         return incr
-
-
-# class TestTools:
-
-#     @staticmethod
-#     def duplicate_settings(dir_, dict_update):
-
-#         SettingsManager.load_settings()
-#         SettingsManager.update(dict_update, testing= True)
-
-#         os.environ[ENV.settings] = join(dir_, "settings_testing.yaml")
-
-#         with open(os.environ[ENV.settings], "w") as file_:
-#             yaml.dump(SettingsManager._parameters, file_)
-

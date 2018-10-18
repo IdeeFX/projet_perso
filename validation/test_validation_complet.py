@@ -26,9 +26,6 @@ from utils.tools import Tools
 from utils.database import Database
 from utils.log_setup import setup_logging
 
-        # os.environ[ENV.debug] = "False"
-        # # DebugSettingsManager.sftp_pool = Pool
-        # # DebugSettingsManager.ftp_pool = Pool
 
 class CompleteTest(unittest.TestCase):
 
@@ -110,7 +107,6 @@ class CompleteTest(unittest.TestCase):
         SettingsManager.update(dict(openwisStagingPath=gettempdir(),
                                     openwisHost="localhost",
                                     openwisSftpUser="admin",
-                                    # openwisSftpUser="openwis",
                                     openwisSftpPassword="admin",
                                     openwisSftpPort = 3373
                                     ),

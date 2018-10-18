@@ -763,7 +763,6 @@ class DiffMetManager:
         elif diff_info["DiffusionType"] == "EMAIL":
             mail_to_xml(element, diff_info, prefix="")
 
-    # TODO tostring method
     def _create_diffmet_instr(self):
 
         def get_prefix(diff):
@@ -843,7 +842,6 @@ if __name__ == '__main__':
     # initialize LOGGER
     setup_logging()
     LOGGER = logging.getLogger("file_manager.manager")
-    # TODO "Logging configuration set up" what does that even mean ?
     LOGGER.debug("Logging configuration set up for %s", "file_manager.manager")
 
     LOGGER.info("File Manager setup complete")

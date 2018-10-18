@@ -13,12 +13,6 @@ from utils.database import Database
 from utils.const import PORT, ENV
 
 
-# TODO move those class definitions in another file
-MailDispatchMode = Unicode(values=['TO', 'CC', 'BCC'])
-MailAttachmentMode = Unicode(values=['EMBEDDED_IN_BODY', 'AS_ATTACHMENT'])
-requestStatus = Unicode(
-    values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED'])
-
 LOGGER = logging.getLogger(__name__)
 
 class Diffusion(ComplexModel):

@@ -35,16 +35,10 @@ class SettingsManager:
     def load_settings(cls, settings_file=DEFAULT_SETTINGS_PATH, reloading=False):
         loaded = False
 
-        #TODO document use of config.ini /etc/metwork.config.d/mfserv/config.ini to set
-        # an environnement variable
-
         # load yaml settings file
-        #TODO move MFSERV_HARNAIS_SETTINGS into const
         path = cls._settings_file = os.environ.get(ENV.settings, None)
         if path is None:
             path = cls._settings_file = os.path.join(os.path.dirname(__file__), settings_file)
-
-        # TODO check if file can be opened
 
         checksum = Tools.checksum_file(path)
 
