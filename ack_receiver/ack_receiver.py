@@ -276,7 +276,7 @@ class AckReceiver:
 
         if not diff_success:
             if current_status != REQ_STATUS.ongoing:
-                msg = ("Difmet reports failure for request %s but"
+                msg = ("Difmet reports failure for request %s but "
                       "current status is not %s !" % (diff_id, REQ_STATUS.ongoing))
                 LOGGER.error(msg)
                 Database.update_field_by_query("message", msg,
@@ -290,7 +290,7 @@ class AckReceiver:
                                             **dict(fullrequestId=diff_id))
         else:
             if current_status != REQ_STATUS.ongoing:
-                msg = ("Difmet reports success for request %s but"
+                msg = ("Difmet reports success for request %s but "
                       "current status is not %s !" % (diff_id, REQ_STATUS.ongoing))
                 LOGGER.error(msg)
                 Database.update_field_by_query("message", msg,

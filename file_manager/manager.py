@@ -142,7 +142,7 @@ class FileManager:
             if renaming_ok:
                 diff_manager.compile_archive()
             else:
-                msg = ("Dissemination failed for requests %s because user settings
+                msg = ("Dissemination failed for requests %s because user settings "
                        "tmpregex resulted in incorrect filename for difmet" % request_id_list)
                 LOGGER.error(msg)
                 for req_id in request_id_list:
@@ -637,7 +637,7 @@ class DiffMetManager:
                 elif idx == 0:
                     LOGGER.error("No regex defined in fileregex1 settings !")
 
-        filename_ok = cls.check_filename(new_filename)
+        filename_ok = self.check_filename(new_filename)
 
         if filename_ok:
             # update record with new filename
@@ -685,14 +685,16 @@ class DiffMetManager:
     @staticmethod
     def check_filename(filename):
 
+        test_string = os.path.splitext(filename)[0]
+
         re_match = re.match("^([a-zA-Z0-9\-\+]+)\,"
                             "([a-zA-Z0-9\+]*)\,([a-zA-Z0-9\-\+]+)\,"
-                            "([0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][0-5][0-9])$", filename)
+                            "([0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][0-5][0-9])$", test_string)
 
         if re_match is None:
             check_ok = False
         else:
-            total = re_match.group(1) + "," + re_match.group(2) + "," + re_match.group(3)
+            total = ",".join([re_match.group(1),re_match.group(2),re_match.group(3)])
             check_ok = len(total) <= 96
 
         return check_ok
@@ -870,6 +872,7 @@ if __name__ == '__main__':
         max_loops = 0
 
     # initialize LOGGER
+    SettingsManager.load_settings()
     setup_logging()
     LOGGER = logging.getLogger("file_manager.manager")
     LOGGER.debug("Logging configuration set up for %s", "file_manager.manager")

@@ -84,6 +84,7 @@ class CompleteTest(unittest.TestCase):
         SettingsManager.reset()
 
     def test_complet(self):
+        SettingsManager.load_settings()
         SoapServer.create_server()
         client = Client(os.environ[ENV.soap_url])
         factory = client.type_factory('http://dissemination.harness.openwis.org/')
