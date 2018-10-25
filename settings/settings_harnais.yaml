@@ -74,7 +74,7 @@ sla: False
 # Durée de rétention (en heure) des acquittements dans la « table » d’acquittements.
 delAck:
 # Valeur par defaut de priorité à appliquer à une diffusion
-delfaultpriority: 85
+defaultpriority: 85
 # Element de nommage du fichier de diffusion vers Difmet
 diffFileName:
 # Date de fin de vie d’un fichier en minute par rapport à l’heure système

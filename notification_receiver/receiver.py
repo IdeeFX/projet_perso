@@ -55,7 +55,7 @@ class Notification():
         if priority ==1:
             result = PRIORITIES.maximum
         elif priority >=2:
-            default_priority = SettingsManager.get("delfaultPriority") or PRIORITIES.default
+            default_priority = SettingsManager.get("defaultPriority") or PRIORITIES.default
             result = default_priority + priority - 2*sla
             result = max(PRIORITIES.maximum, result)
             result = min(PRIORITIES.minimum, result)

@@ -702,7 +702,7 @@ class DiffMetManager:
     def _get_priority(self):
 
         donot_compute_priority = SettingsManager.get("sla")
-        default_priority = SettingsManager.get("delfaultPriority", PRIORITIES.default)
+        default_priority = SettingsManager.get("defaultPriority", PRIORITIES.default)
 
         if donot_compute_priority:
             highest_priority = default_priority
