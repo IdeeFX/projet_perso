@@ -3,7 +3,7 @@ harnais:
   logdir: /tmp/harnais/
   # Repertoire principal du harnais
   dir: /tmp/harnais/
-  # Repertoire de réception des ack
+  # Repertoire de réception des ack de difmet
   ackdir: /tmp/ack
   # Synchronisation en seconde entre le serveur
   # actif et passif, si valeur à 0 indique qu’il n’y a pas de serveur passif.
