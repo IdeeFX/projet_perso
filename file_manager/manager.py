@@ -582,7 +582,7 @@ class DiffMetManager:
         # [:$SS] : seconde de 00 à 59
         # if multiple id, we take the first
         req_id = self.id_list[0]
-        repl = repl.replace("[:$requestID]", req_id)
+        repl = repl.replace("[:$requestID]", self._get_instr(req_id, "req_id"))
         repl = repl.replace(
             "[:$hostname]", self._get_instr(req_id, "hostname"))
 
