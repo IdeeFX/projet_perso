@@ -446,6 +446,7 @@ class ConnectionPointer:
             else:
                 pool = multiprocessing.Pool(processes=nb_workers)
             results = pool.starmap_async(self._sftp_file, files_to_sftp)
+            pool.close()
 
             timeout = self.compute_timeout(required_bandwith)
 
