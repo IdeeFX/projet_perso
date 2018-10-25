@@ -78,7 +78,6 @@ defaultpriority: 85
 # Element de nommage du fichier de diffusion vers Difmet
 diffFileName:
 # Date de fin de vie d’un fichier en minute par rapport à l’heure système
-# pour le champ
 fileendlive:
 # Temps en seconde d’attente avant le traitement des archives difmet à expédier
 sendFTPIdle:
