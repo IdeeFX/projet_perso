@@ -84,6 +84,7 @@ class CompleteTest(unittest.TestCase):
         SettingsManager.reset()
 
     def test_complet(self):
+        SettingsManager.load_settings()
         SoapServer.create_server()
         client = Client(os.environ[ENV.soap_url])
         factory = client.type_factory('http://dissemination.harness.openwis.org/')
@@ -146,6 +147,25 @@ class CompleteTest(unittest.TestCase):
             ext_id1=Database.get_external_id("123456" + "localhost")
             ext_id2=Database.get_external_id("654321" + "localhost")
 
+        # with open(join(self.ack_dir, "ack_file.acqdifmet.xml"),"w") as file_:
+        #     file_.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
+        #                 "<acquittements>\n"
+        #                 "<acquittement>\n"
+        #                     "<date>2018-10-01T12:31:46Z</date>\n"
+        #                     "<type>RECEIVED</type>\n"
+        #                     "<status>OK</status>\n"
+        #                     "<productid>fr-met,SNFR30LFPW011000LFPW,00001-wiss,20181001100000</productid>\n"
+        #                     "<product_internalid>66180_20181001123146</product_internalid>\n"
+        #                     "<send2>0</send2>\n"
+        #                     "<diffusion_externalid>{ext_id1}</diffusion_externalid>\n"
+        #                     "<diffusion_internalid>66181_20181001123146</diffusion_internalid>\n"
+        #                     "<channel>EMAIL</channel>\n"
+        #                     "<media>EMAIL</media>\n"
+        #                     "<use_standby>0</use_standby>\n"
+        #                     "<email_adress>yves.goupil@meteo.fr</email_adress>\n"
+        #                 "</acquittement>\n"
+        #                 "<acquittementnumber>1</acquittementnumber>\n"
+        #                 "</acquittements>".format(ext_id1=ext_id1))
         with open(join(self.ack_dir, "ack_file.acqdifmet.xml"),"w") as file_:
             file_.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
                         "<acquittements>\n"

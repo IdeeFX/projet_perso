@@ -127,7 +127,6 @@ class FileManager:
             # diss_instructions keys. That is to prevent trying to find
             # an instruction file related to a file that has been processed
             # by a previous request
-
             request_id_list = [item for item in request_id_list
                                 if item in diss_instructions.keys()]
 
@@ -138,9 +137,19 @@ class FileManager:
                                           file_path,
                                           diss_instructions)
             # rename files according to regex
-            diff_manager.rename()
+            renaming_ok = diff_manager.rename()
             # package the archive
-            diff_manager.compile_archive()
+            if renaming_ok:
+                diff_manager.compile_archive()
+            else:
+                msg = ("Dissemination failed for requests %s because user settings "
+                       "tmpregex resulted in incorrect filename for difmet" % request_id_list)
+                LOGGER.error(msg)
+                for req_id in request_id_list:
+                    Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
+                                                **dict(fullrequestId=req_id))
+                    Database.update_field_by_query("message", msg,
+                                                **dict(fullrequestId=req_id))
 
     @classmethod
     def check_end_loop(cls, counter, max_loops):
@@ -446,6 +455,7 @@ class ConnectionPointer:
             else:
                 pool = multiprocessing.Pool(processes=nb_workers)
             results = pool.starmap_async(self._sftp_file, files_to_sftp)
+            pool.close()
 
             timeout = self.compute_timeout(required_bandwith)
 
@@ -581,7 +591,7 @@ class DiffMetManager:
         # [:$SS] : seconde de 00 à 59
         # if multiple id, we take the first
         req_id = self.id_list[0]
-        repl = repl.replace("[:$requestID]", req_id)
+        repl = repl.replace("[:$requestID]", self._get_instr(req_id, "req_id"))
         repl = repl.replace(
             "[:$hostname]", self._get_instr(req_id, "hostname"))
 
@@ -627,11 +637,16 @@ class DiffMetManager:
                 elif idx == 0:
                     LOGGER.error("No regex defined in fileregex1 settings !")
 
-        # update record with new filename
-        with Database.get_app().app_context():
-            records = Diffusion.query.filter_by(original_file=self.original_filename).all()
-        self.update_database(records, "final_file", new_filename)
-        self.new_filename = new_filename
+        filename_ok = self.check_filename(new_filename)
+
+        if filename_ok:
+            # update record with new filename
+            with Database.get_app().app_context():
+                records = Diffusion.query.filter_by(original_file=self.original_filename).all()
+            self.update_database(records, "final_file", new_filename)
+            self.new_filename = new_filename
+
+        return filename_ok
 
     def compile_archive(self):
         instr_file_path = self._create_diffmet_instr()
@@ -667,10 +682,27 @@ class DiffMetManager:
         with Database.get_app().app_context():
             database.session.commit()
 
+    @staticmethod
+    def check_filename(filename):
+
+        test_string = os.path.splitext(filename)[0]
+
+        re_match = re.match("^([a-zA-Z0-9\-\+]+)\,"
+                            "([a-zA-Z0-9\+]*)\,([a-zA-Z0-9\-\+]+)\,"
+                            "([0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][0-5][0-9])$", test_string)
+
+        if re_match is None:
+            check_ok = False
+        else:
+            total = ",".join([re_match.group(1),re_match.group(2),re_match.group(3)])
+            check_ok = len(total) <= 96
+
+        return check_ok
+
     def _get_priority(self):
 
         donot_compute_priority = SettingsManager.get("sla")
-        default_priority = SettingsManager.get("delfaultPriority", PRIORITIES.default)
+        default_priority = SettingsManager.get("defaultPriority", PRIORITIES.default)
 
         if donot_compute_priority:
             highest_priority = default_priority
@@ -840,6 +872,7 @@ if __name__ == '__main__':
         max_loops = 0
 
     # initialize LOGGER
+    SettingsManager.load_settings()
     setup_logging()
     LOGGER = logging.getLogger("file_manager.manager")
     LOGGER.debug("Logging configuration set up for %s", "file_manager.manager")

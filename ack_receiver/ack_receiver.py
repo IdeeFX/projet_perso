@@ -122,18 +122,18 @@ class AckReceiver:
 
     @classmethod
     def get_alarm(cls, file_):
-        req_id = None
 
         tree = etree.parse(file_)
         root = tree.getroot()
 
         for alarm in root.findall("alarm"):
             diff_external_id = alarm.findtext("diffusion_externalid")
-
+            dtb_key = dict(diff_externalid=ext_id)
+            req_id = Database.get_id_by_query(**dtb_key)
             keys = ["date",
                     "severity",
                     "error",
-                    "error_text"
+                    "error_text",
                     "subscriber_name"]
 
             msg_list = ["diffusion_externalid = %s" % diff_external_id]
@@ -142,15 +142,16 @@ class AckReceiver:
                 val = Tools.ack_decode(alarm.findtext(key))
                 msg_list.append('{k} : {v}'.format(k=key,v=val))
 
-            alarm_msg = msg_list[0] + "\n".join(msg_list)
+            alarm_msg = "\n".join(msg_list)
             LOGGER_ALARM.debug("Alarm message is : \n %s", alarm_msg)
+
+
+            if req_id is not None:
+                cls.update_database_message(alarm_msg, req_id)
 
         for handler in LOGGER_ALARM.handlers:
             LOGGER.info("Logged an alarm message into "
                         "log file %s", handler.baseFilename)
-        if req_id is not None:
-            cls.update_database_status(alarm_msg)
-
 
     @classmethod
     def get_ack(cls, file_):
@@ -159,15 +160,23 @@ class AckReceiver:
         root = tree.getroot()
         req_id = None
 
+        # we read the ack file for finding diffusion_externalid
+        # and storing them in a ack_compiler object
+        ack_compiler = AckCompiler()
+        for ack in root.findall("acquittement"):
+            diff_external_id= ack.findtext("diffusion_externalid")
+            prod_id = ack.findtext("productid")
+            ack_compiler.add_ack_status(diff_external_id, prod_id)
+
+        # now, we check their status
         for ack in root.findall("acquittement"):
             diff_external_id = ack.findtext("diffusion_externalid")
-            dtb_key = dict(diff_externalid=diff_external_id)
+            # get corresponding status:
+            ack_status = ack_compiler.get_status(diff_external_id)
+            req_id = ack_status.req_id
             prod_id = ack.findtext("productid")
-            req_id = Database.get_id_by_query(**dtb_key)
             status = ack.findtext("status")
             ack_type = ack.findtext("type")
-            # channel =
-
             keys = ["type",
                     "status",
                     "productid",
@@ -180,18 +189,8 @@ class AckReceiver:
                     "ftp_directory",
                     "email_adress"]
 
-            if ack_type == "SEND" and status == "OK":
-                diff_success = True
-                cls.update_database_status(diff_success, req_id)
-                msg = ("DiffMet ack reports success for product %s "
-                       "corresponding to request %s" %
-                       (prod_id,
-                       req_id))
-                LOGGER.info(msg)
-                cls.update_database_message(msg, req_id)
-            else:
-                ack_type_failure = ack_type
-                status_failure = status
+            ack_status.status_to_process.append((ack_type, status))
+
             # Log the full ack
             msg_list = ["fullrequestId = %s" % req_id,
                         "diffusion_externalid = %s" % diff_external_id,
@@ -202,49 +201,134 @@ class AckReceiver:
             ack_msg = "\n".join(msg_list)
             LOGGER_ACK.debug("Ack message is : \n%s", ack_msg)
 
-        if not diff_success:
-            cls.update_database_status(diff_success, req_id)
-            msg = ("DiffMet ack reports error for product %s "
-                   "corresponding to request %s with status %s "
-                   "for request of type %s." %
-                   (prod_id,
-                   req_id,
-                   ack_type_failure,
-                   status_failure))
-            LOGGER.error(msg)
-            cls.update_database_message(msg, req_id)
+        # we compile the status and deduce the resulting REQ_STATUS to return
+        for ack_status in ack_compiler.status_list:
+            req_id = ack_status.req_id
+            prod_id = ack_status.prod_id
+            ack_type, status, final_status = ack_status.compile_status()
 
+            if final_status == "ongoing":
+                msg = "DifMet ack provides return recept for request %s" % req_id
+                LOGGER.info(msg)
+                cls.update_database_message(msg, req_id)
+            elif final_status == "success":
+                cls.update_database_status(True, req_id)
+                msg = ("DiffMet ack reports success for product %s "
+                       "corresponding to request %s" %
+                       (prod_id,
+                       req_id))
+                LOGGER.info(msg)
+                cls.update_database_message(msg, req_id)
+            elif final_status == "failure":
+                cls.update_database_status(False, req_id)
+                msg = ("DiffMet ack reports error for product %s "
+                    "corresponding to request %s with status %s "
+                    "for request of type %s." %
+                    (prod_id,
+                    req_id,
+                    ack_type,
+                    status))
+                LOGGER.error(msg)
+                cls.update_database_message(msg, req_id)
+
+
+
+        # # case where there is only the ack corresponding to reception
         for handler in LOGGER_ACK.handlers:
             LOGGER.info("Logged an ack message into "
                         "log file %s", handler.baseFilename)
-
-        if diff_success and req_id is None:
-            LOGGER.error("Couldn't retrieve dissemination requestId "
-                         "from external_id %s", diff_external_id)
 
 
     @classmethod
     def update_database_status(cls, diff_success, diff_id):
 
+        current_status = Database.get_request_status(diff_id)
+
         if not diff_success:
-            msg = ("Diffmet reported that diffusion %s failed.", diff_id)
-            LOGGER.info(msg)
-            Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
+            if current_status != REQ_STATUS.ongoing:
+                msg = ("Difmet reports failure for request %s but "
+                      "current status is not %s !" % (diff_id, REQ_STATUS.ongoing))
+                LOGGER.error(msg)
+                Database.update_field_by_query("message", msg,
+                                               **dict(fullrequestId=diff_id))
+            else:
+                msg = ("Diffmet reported that diffusion %s failed." % diff_id)
+                LOGGER.info(msg)
+                Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
+                                                **dict(fullrequestId=diff_id))
+                Database.update_field_by_query("message", msg,
                                             **dict(fullrequestId=diff_id))
-            Database.update_field_by_query("message", msg,
-                                           **dict(fullrequestId=diff_id))
         else:
-            msg = ("Diffmet reported that diffusion %s succeeded." % diff_id)
-            LOGGER.info(msg)
-            Database.update_field_by_query("requestStatus", REQ_STATUS.succeeded,
+            if current_status != REQ_STATUS.ongoing:
+                msg = ("Difmet reports success for request %s but "
+                      "current status is not %s !" % (diff_id, REQ_STATUS.ongoing))
+                LOGGER.error(msg)
+                Database.update_field_by_query("message", msg,
+                                               **dict(fullrequestId=diff_id))
+            else:
+                msg = ("Diffmet reported that diffusion %s succeeded." % diff_id)
+                LOGGER.info(msg)
+                Database.update_field_by_query("requestStatus", REQ_STATUS.succeeded,
+                                                **dict(fullrequestId=diff_id))
+                Database.update_field_by_query("message", msg,
                                             **dict(fullrequestId=diff_id))
-            Database.update_field_by_query("message", msg,
-                                           **dict(fullrequestId=diff_id))
+
     @classmethod
     def update_database_message(cls, message, diff_id):
 
         Database.update_field_by_query("message", message,
                                         **dict(fullrequestId=diff_id))
+
+
+class AckCompiler:
+
+    def __init__(self):
+        self.diff_ext_id = []
+        self.status_list = []
+
+    def add_ack_status(self, ext_id, prod_id):
+        if ext_id not in self.diff_ext_id:
+            self.diff_ext_id.append(ext_id)
+            self.status_list.append(AckStatus(ext_id, prod_id))
+
+    def get_status(self, ext_id):
+        for i, id_stored in enumerate(self.diff_ext_id):
+            if id_stored == ext_id:
+                break
+        ack_status = self.status_list[i]
+
+        return ack_status
+
+
+
+class AckStatus:
+
+    def __init__(self, ext_id, prod_id):
+        self.ext_id = ext_id
+        dtb_key = dict(diff_externalid=ext_id)
+        req_id = Database.get_id_by_query(**dtb_key)
+        if req_id is None:
+            LOGGER.error("Couldn't retrieve dissemination requestId "
+                        "from external_id %s", diff_external_id)
+        self.req_id = req_id
+        self.prod_id = prod_id
+        self.status_to_process = []
+
+    def compile_status(self):
+
+        final_status = "ongoing"
+
+        for ack_type, status in self.status_to_process:
+            if ack_type == "SEND" and status == "OK":
+                final_status = "success"
+                break
+            elif ack_type != "RECEIVED" and status != "OK":
+                final_status= "failure"
+                break
+
+        return ack_type, status, final_status
+
+
 
 if __name__ == '__main__':
     process_name = "harness_ack_receiver"
@@ -266,6 +350,7 @@ if __name__ == '__main__':
         max_loops = 0
 
     # initialize LOGGER
+    SettingsManager.load_settings()
     setup_logging()
     LOGGER = logging.getLogger("ack_receiver.ack_receiver")
     LOGGER.debug("Logging configuration set up for %s", "ack_receiver.ack_receiver")

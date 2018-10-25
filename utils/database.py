@@ -148,7 +148,7 @@ class Database():
             records = Diffusion.query.filter_by(original_file=filename).all()
         id_list = []
         for rec in records:
-            if rec.fullrequestId not in id_list:
+            if rec.fullrequestId not in id_list and rec.requestStatus == REQ_STATUS.ongoing:
                 id_list.append(rec.fullrequestId)
 
         return id_list

@@ -82,6 +82,8 @@ def launch(launch_logger=None, debug=True):
             proc_name = proc_names[i]
             process_status[i] = executor.submit(launch_named_process, *(proc, proc_name))
             launch_logger.info("Launching %s.", proc.__qualname__)
+            # sleep to avoid concurrent access to database at startup
+            sleep(1)
         #if one crashes, it get restarted
         while True:
             sleep(10)
@@ -93,7 +95,8 @@ def launch(launch_logger=None, debug=True):
                     proc_name = proc_names[i]
                     process_status[i] = executor.submit(launch_named_process, *(proc, proc_name))
                     launch_logger.info("Function %s crashed, restarting.", proc.__qualname__)
-
+                    # sleep to avoid concurrent access to database at startup
+                    sleep(1)
             # we wait until an exception arises
             wait(process_status,return_when=FIRST_EXCEPTION)
 
