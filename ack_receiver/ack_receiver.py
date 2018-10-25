@@ -380,6 +380,7 @@ if __name__ == '__main__':
         max_loops = 0
 
     # initialize LOGGER
+    SettingsManager.load_settings()
     setup_logging()
     LOGGER = logging.getLogger("ack_receiver.ack_receiver")
     LOGGER.debug("Logging configuration set up for %s", "ack_receiver.ack_receiver")

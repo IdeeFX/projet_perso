@@ -308,18 +308,19 @@ class DifmetSender:
         start = time()
         connection_ok, ftp = cls.connect_ftp()
         file_locked = file_ + ".lock"
-        if connection_ok:
-            ftpdir = SettingsManager.get("dissFtpDir")
-            ftp.cwd(ftpdir)
-            # renaming in tmp
-            file_renamed = basename(file_) + ".tmp"
-            ftp.storbinary('STOR ' + file_renamed, open(file_locked, 'rb'))
-            ftp.rename(file_renamed, basename(file_))
+        with open(file_locked, 'rb') as file_transfered:
+            if connection_ok:
+                ftpdir = SettingsManager.get("dissFtpDir")
+                ftp.cwd(ftpdir)
+                # renaming in tmp
+                file_renamed = basename(file_) + ".tmp"
+                ftp.storbinary('STOR ' + file_renamed, file_transfered)
+                ftp.rename(file_renamed, basename(file_))
 
-            upload_ok = True
-            ftp.quit()
-        else:
-            upload_ok = False
+                upload_ok = True
+                ftp.quit()
+            else:
+                upload_ok = False
 
         return upload_ok, time() - start
 
@@ -342,6 +343,7 @@ if __name__ == '__main__':
         max_loops = 0
 
     # initialize LOGGER
+    SettingsManager.load_settings()
     setup_logging()
     LOGGER = logging.getLogger("file_sender.sender")
     LOGGER.debug("Logging configuration set up for %s", "file_sender.sender")
