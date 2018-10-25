@@ -133,7 +133,7 @@ class AckReceiver:
             keys = ["date",
                     "severity",
                     "error",
-                    "error_text"
+                    "error_text",
                     "subscriber_name"]
 
             msg_list = ["diffusion_externalid = %s" % diff_external_id]
@@ -190,18 +190,6 @@ class AckReceiver:
                     "email_adress"]
 
             ack_status.status_to_process.append((ack_type, status))
-            # if ack_type == "SEND" and status == "OK":
-            #     diff_success = True
-            #     cls.update_database_status(diff_success, req_id)
-            #     msg = ("DiffMet ack reports success for product %s "
-            #            "corresponding to request %s" %
-            #            (prod_id,
-            #            req_id))
-            #     LOGGER.info(msg)
-            #     cls.update_database_message(msg, req_id)
-            # else:
-            #     ack_type_failure = ack_type
-            #     status_failure = status
 
             # Log the full ack
             msg_list = ["fullrequestId = %s" % req_id,
@@ -246,24 +234,6 @@ class AckReceiver:
 
 
         # # case where there is only the ack corresponding to reception
-        # if int(root.findtext("acquittementnumber")) == 1 and \
-        #    ack_type == "RECEIVED" and status == "OK":
-        #    msg = "DifMet ack provides return recept for request %s" % req_id
-        #    LOGGER.info(msg)
-        #    cls.update_database_message(msg, req_id)
-        # # other cases are failures
-        # elif not diff_success:
-        #     cls.update_database_status(diff_success, req_id)
-        #     msg = ("DiffMet ack reports error for product %s "
-        #            "corresponding to request %s with status %s "
-        #            "for request of type %s." %
-        #            (prod_id,
-        #            req_id,
-        #            ack_type_failure,
-        #            status_failure))
-        #     LOGGER.error(msg)
-        #     cls.update_database_message(msg, req_id)
-
         for handler in LOGGER_ACK.handlers:
             LOGGER.info("Logged an ack message into "
                         "log file %s", handler.baseFilename)
