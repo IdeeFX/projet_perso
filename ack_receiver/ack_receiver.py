@@ -208,7 +208,7 @@ class AckReceiver:
             ack_type, status, final_status = ack_status.compile_status()
 
             if final_status == "ongoing":
-                msg = "DifMet ack provides return recept for request %s" % req_id
+                msg = "Received DifMet ack for request %s" % req_id
                 LOGGER.info(msg)
                 cls.update_database_message(msg, req_id)
             elif final_status == "success":
@@ -322,7 +322,7 @@ class AckStatus:
             if ack_type == "SEND" and status == "OK":
                 final_status = "success"
                 break
-            elif ack_type != "RECEIVED" and status != "OK":
+            elif ack_type == "SEND" and status != "OK":
                 final_status= "failure"
                 break
 
