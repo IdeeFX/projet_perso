@@ -44,7 +44,7 @@ def main():
     LOGGER.warning("Starting application through Flask development server."
                    " This is NOT a production environment.")
     LOGGER.info("Launching Flask development server "
-                "on hostname %s on port %i", hostname, port)
+                "on hostname %s on port %s", hostname, port)
     APP.run(host=hostname, port=port)
     # WARNING You might run into the spyne error :
     # ValueError: '__class__' is not in list
