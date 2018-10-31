@@ -139,15 +139,6 @@ class Database():
         if status != REQ_STATUS.failed and not all_disseminated:
             status = REQ_STATUS.ongoing
 
-        # status = records[0].requestStatus
-        #check that all records are the same
-        # for rec in records[1:]:
-        #     if status != rec.requestStatus:
-        #         LOGGER.error("Records with same fullrequestId have "
-        #                      "different requestStatus. This should NEVER "
-        #                      "happen !")
-
-
         return status
 
     @classmethod

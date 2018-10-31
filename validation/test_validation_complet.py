@@ -46,7 +46,7 @@ class CompleteTest(unittest.TestCase):
         os.mkdir(self.ack_dir)
 
         # create files on staging post
-        for i in range(10):
+        for i in range(1):
             with open(join(self.staging_post,"A_SNFR30LFPW270700_C_LFPW_20180927070000_%i.txt" % i),"w") as file_out:
                 file_out.write("Dummy staging post test file")
 

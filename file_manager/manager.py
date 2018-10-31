@@ -641,9 +641,8 @@ class DiffMetManager:
 
         if filename_ok:
             # update record with new filename
-            with Database.get_app().app_context():
-                records = Diffusion.query.filter_by(original_file=self.original_filename).all()
-            self.update_database(records, "final_file", new_filename)
+            Database.update_field_by_query("final_file", new_filename,
+                                           **dict(original_file=self.original_filename))
             self.new_filename = new_filename
 
         return filename_ok
@@ -666,21 +665,10 @@ class DiffMetManager:
 
         Tools.remove_file(instr_file_path, "processed instruction", LOGGER)
         Tools.remove_file(self.new_file_path, "processed data", LOGGER)
-        with Database.get_app().app_context():
-            records = Diffusion.query.filter_by(final_file=self.new_filename).all()
-        self.update_database(records, "rxnotif", False)
-        self.update_database(records, "message", "File packaged in tar.gz format")
+        Database.update_field_by_query("rxnotif", False, **dict(final_file=self.new_filename))
+        Database.update_field_by_query("message", "File packaged in tar.gz format",
+                                       **dict(final_file=self.new_filename))
 
-    @staticmethod
-    def update_database(records, key, value):
-
-        # fetch database
-        database = Database.get_database()
-        for rec in records:
-            setattr(rec, key, value)
-
-        with Database.get_app().app_context():
-            database.session.commit()
 
     @staticmethod
     def check_filename(filename):
