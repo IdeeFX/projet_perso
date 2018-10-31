@@ -1,13 +1,13 @@
 harnais:
-  # Chemin (relatif?) du répertoire des logs
-  logdir: /tmp/harnais/
   # Repertoire principal du harnais
   dir: /tmp/harnais/
+  # Chemin du répertoire des logs
+  logdir: /tmp/harnais/
   # Repertoire de réception des ack de difmet
   ackdir: /tmp/ack
   # Synchronisation en seconde entre le serveur
   # actif et passif, si valeur à 0 indique qu’il n’y a pas de serveur passif.
-  synchro:
+  synchro: 0
 openwis:
   # Indique l’ip ou le hostname du serveur Openwis, si « localhost »
   # la récupération des produits se fera via copie locale.
@@ -31,7 +31,7 @@ openwis:
 diss:
   # Ip ou hostname du serveur Difmet
   host: difintg
-  ftpuser: tls_wis_harnais2_intg
+  ftpuser: tls_wis_harnais2_int
   ftppasswd: $dif_harness
   ftpdir: adressed
   # ftpmode est soit à "active" ou "passive"
@@ -50,9 +50,9 @@ keepfiletime: 14400
 # Durée de conservation des fichiers de directives provisoires (en seconde)
 keepfiletimeSender: 86400
 # Nb de fichiers d'instructions in dir_A à partir duquel un warning est envoyé
-ManagerOverflow:
+ManagerOverflow: 100
 # Nb de fichiers d'archives in dir_C à partir duquel un warning est envoyé
-SenderOverflow:
+SenderOverflow: 100
 # Bande passante (mbits) estimée, permettant la gestion du timeout
 bandwidth:
 # Expression régulière à appliquer aux fichiers tmp.zip
@@ -72,18 +72,19 @@ fileregex3:
 # Si true on calcule la priorité sinon on utilisera la valeur 85 par défaut
 sla: False
 # Durée de rétention (en heure) des acquittements dans la « table » d’acquittements.
-delAck:
+delAck: 24
 # Valeur par defaut de priorité à appliquer à une diffusion
 defaultpriority: 85
 # Element de nommage du fichier de diffusion vers Difmet
-diffFileName:
-# Date de fin de vie d’un fichier en minute par rapport à l’heure système
+diffFileName: fr-meteo-harnaisdiss
+# Durée de fin de vie d’un fichier en minute par rapport à l’heure système
+# pour le champ "end_to_live_date"
 fileendlive:
 # Temps en seconde d’attente avant le traitement des archives difmet à expédier
-sendFTPIdle:
+sendFTPIdle: 10
 # Nombre de transferts FTP concurrentiels
 sendFTPlimitConn: 4
 # Temps en seconde d’attente avant le traitement des réceptions ack
-ackProcessIdle:
+ackProcessIdle: 10
 # Nom de la pièce jointe quand le fichier est envoyé par mail :
 attachmentName: "MeteoFrance_product"
