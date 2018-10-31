@@ -143,7 +143,7 @@ class FileManager:
                 diff_manager.compile_archive()
             else:
                 msg = ("Dissemination failed for requests %s because user settings "
-                       "tmpregex resulted in incorrect filename for difmet" % request_id_list)
+                       "regex resulted in incorrect filename for difmet" % request_id_list)
                 LOGGER.error(msg)
                 for req_id in request_id_list:
                     Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
@@ -684,7 +684,7 @@ class DiffMetManager:
         test_string = os.path.splitext(filename)[0]
 
         re_match = re.match("^([a-zA-Z0-9\-\+]+)\,"
-                            "([a-zA-Z0-9\+]*)\,([a-zA-Z0-9\-\+]+)\,"
+                            "([a-zA-Z0-9\+]*)\,([a-zA-Z0-9\-\+]*)\,"
                             "([0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][0-5][0-9])$", test_string)
 
         if re_match is None:
