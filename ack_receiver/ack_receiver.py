@@ -128,7 +128,7 @@ class AckReceiver:
 
         for alarm in root.findall("alarm"):
             diff_external_id = alarm.findtext("diffusion_externalid")
-            dtb_key = dict(diff_externalid=ext_id)
+            dtb_key = dict(diff_externalid=diff_external_id)
             req_id = Database.get_id_by_query(**dtb_key)
             keys = ["date",
                     "severity",
