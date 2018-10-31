@@ -78,6 +78,7 @@ class FileManager:
                     LOGGER.debug("No instruction file to process, moving on.")
                     instr_to_process = False
                 loop_time = time() - start_time
+                cls.check_end_loop(counter, max_loops)
                 continue
             else:
                 LOGGER.debug("Fetched %i instruction files from %s",
