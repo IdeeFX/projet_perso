@@ -1,8 +1,6 @@
 harnais:
   # Repertoire principal du harnais
   dir: /tmp/harnais/
-  # Chemin du répertoire des logs
-  logdir: /tmp/harnais/
   # Repertoire de réception des ack de difmet
   ackdir: /tmp/ack
   # Synchronisation en seconde entre le serveur
