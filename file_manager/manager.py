@@ -409,6 +409,7 @@ class ConnectionPointer:
             sftp.close()
             transport.close()
 
+
     def sftp_dir(self, dir_path, destination_dir):
 
         files_to_sftp = []
@@ -444,6 +445,11 @@ class ConnectionPointer:
                 LOGGER.debug('file %s found on openwis staging post',
                              file_path
                              )
+
+                if item == "tmp.zip":
+                    ext = "." + Tools.generate_random_string(5)
+                    destination_path = os.path.join(destination_dir, item + ext)
+
                 files_to_sftp.append((dir_path, file_path, destination_path, False))
 
             sftp.close()
@@ -622,12 +628,13 @@ class DiffMetManager:
             "fileRegex%i" % i, {}) for i in range(1, MAX_REGEX+1)]
 
         new_filename = self.original_filename
-        if new_filename == "tmp.zip":
+        zip_detector = r"^tmp\.zip\..*"
+        if re.match(zip_detector, new_filename) is not None:
             zip_regex = SettingsManager.get("tmpregex")
             if zip_regex is None:
                 LOGGER.error("No regex defined in tmpregex settings !")
             else:
-                new_filename = self._rename_by_regex(new_filename, "tmp.zip", zip_regex)
+                new_filename = self._rename_by_regex(new_filename, zip_detector, zip_regex)
         else:
             for idx, regex_instruction in enumerate(regex_settings):
                 reg = regex_instruction.get("pattern_in", None)
