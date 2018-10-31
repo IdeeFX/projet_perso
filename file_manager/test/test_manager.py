@@ -74,7 +74,8 @@ class TestFileManager(unittest.TestCase):
             json.dump(instr, file_)
         # create corresponding record in database:
         ext_id = Tools.generate_random_string()
-        diffusion = Diffusion(diff_externalid=ext_id,
+        diffusion = Diffusion(primary_key=Tools.generate_random_string(),
+                              diff_externalid=ext_id,
                               fullrequestId="123456"+socket.gethostname(),
                               requestStatus=REQ_STATUS.ongoing,
                               Date=datetime.now(),

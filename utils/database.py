@@ -113,6 +113,8 @@ class Database():
     @classmethod
     def get_request_status(cls,req_id):
 
+        status = REQ_STATUS.ongoing
+
         with cls.get_app().app_context():
             records = Diffusion.query.filter(Diffusion.fullrequestId.contains(req_id)).all()
 
@@ -122,13 +124,21 @@ class Database():
                            "Id %s in database.", req_id)
             return REQ_STATUS.failed
 
-        status = records[0].requestStatus
-        #check that all records are the same
-        for rec in records[1:]:
-            if status != rec.requestStatus:
-                LOGGER.error("Records with same fullrequestId have "
-                             "different requestStatus. This should NEVER "
-                             "happen !")
+        status = REQ_STATUS.succeeded
+        all_disseminated = True
+        for rec in records:
+            if rec.requestStatus == REQ_STATUS.failed:
+                status = REQ_STATUS.failed
+                break
+            elif rec.requestStatus == REQ_STATUS.ongoing:
+                status = REQ_STATUS.ongoing
+                all_disseminated = False
+            elif rec.rxnotif != False:
+                all_disseminated = False
+
+        if status != REQ_STATUS.failed and not all_disseminated:
+            status = REQ_STATUS.ongoing
+
         return status
 
     @classmethod
@@ -172,14 +182,19 @@ class Database():
         with cls.get_app().app_context():
             status = cls.get_request_status(req_id)
 
-            rec= Diffusion.query.filter(Diffusion.fullrequestId.\
-                      contains(req_id)).first()
-            if rec is None:
-                message = ""
-                LOGGER.warning("No corresponding request id in database "
-                               "for request %s", req_id)
+            records = Diffusion.query.filter(Diffusion.fullrequestId.\
+                      contains(req_id)).all()
+
+            if len(records) ==0:
+                    message = ("No corresponding request id in database "
+                               "for request %s" % req_id)
+                    LOGGER.warning(message)
             else:
-                message = rec.message
+                msg_list = []
+                for rec in records:
+                    msg_list.append(rec.message)
+
+                message = " --- ".join(msg_list)
 
         return status, message
 
@@ -213,8 +228,10 @@ class Diffusion(DTB.Model):
 
     status_values = (REQ_STATUS.ongoing, REQ_STATUS.failed, REQ_STATUS.succeeded)
 
-    diff_externalid = DTB.Column(DTB.String(
+    primary_key = DTB.Column(DTB.String(
         RANDOM_ID_LENGTH), nullable=False, primary_key=True)
+    diff_externalid = DTB.Column(DTB.String(
+        RANDOM_ID_LENGTH), nullable=False)
     fullrequestId = DTB.Column(DTB.String, nullable=False)
     original_file = DTB.Column(DTB.String)
     final_file = DTB.Column(DTB.String)
@@ -224,7 +241,8 @@ class Diffusion(DTB.Model):
     rxnotif = DTB.Column(DTB.Boolean, nullable=False)
 
     def __repr__(self):
-        repr_ = ('<Diffusion(diff_externalid={diff_externalid}, '
+        repr_ = ('<Diffusion(primary_key={primary_key}, '
+                 'diff_externalid={diff_externalid}, '
                  'fullrequestId={fullrequestId}, '
                  'original_file={original_file}, '
                  'final_file={final_file}, '

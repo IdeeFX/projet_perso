@@ -128,7 +128,7 @@ class AckReceiver:
 
         for alarm in root.findall("alarm"):
             diff_external_id = alarm.findtext("diffusion_externalid")
-            dtb_key = dict(diff_externalid=ext_id)
+            dtb_key = dict(diff_externalid=diff_external_id)
             req_id = Database.get_id_by_query(**dtb_key)
             keys = ["date",
                     "severity",
@@ -147,7 +147,7 @@ class AckReceiver:
 
 
             if req_id is not None:
-                cls.update_database_message(alarm_msg, req_id)
+                cls.update_database_message(alarm_msg, req_id, diff_external_id)
 
         for handler in LOGGER_ALARM.handlers:
             LOGGER.info("Logged an alarm message into "
@@ -155,7 +155,6 @@ class AckReceiver:
 
     @classmethod
     def get_ack(cls, file_):
-        diff_success = False
         tree = etree.parse(file_)
         root = tree.getroot()
         req_id = None
@@ -203,33 +202,34 @@ class AckReceiver:
 
         # we compile the status and deduce the resulting REQ_STATUS to return
         for ack_status in ack_compiler.status_list:
+            ext_id = ack_status.ext_id
             req_id = ack_status.req_id
             prod_id = ack_status.prod_id
             ack_type, status, final_status = ack_status.compile_status()
 
             if final_status == "ongoing":
-                msg = "DifMet ack provides return recept for request %s" % req_id
+                msg = "Received DifMet ack for request %s corresponding to product %s " % (req_id, prod_id)
                 LOGGER.info(msg)
-                cls.update_database_message(msg, req_id)
+                cls.update_database_message(msg, req_id, ext_id)
             elif final_status == "success":
-                cls.update_database_status(True, req_id)
+                cls.update_database_status(True, req_id, ext_id)
                 msg = ("DiffMet ack reports success for product %s "
                        "corresponding to request %s" %
                        (prod_id,
                        req_id))
                 LOGGER.info(msg)
-                cls.update_database_message(msg, req_id)
+                cls.update_database_message(msg, req_id, ext_id)
             elif final_status == "failure":
-                cls.update_database_status(False, req_id)
+                cls.update_database_status(False, req_id, ext_id)
                 msg = ("DiffMet ack reports error for product %s "
                     "corresponding to request %s with status %s "
-                    "for request of type %s." %
+                    "for type %s." %
                     (prod_id,
                     req_id,
                     ack_type,
                     status))
                 LOGGER.error(msg)
-                cls.update_database_message(msg, req_id)
+                cls.update_database_message(msg, req_id, ext_di)
 
 
 
@@ -240,7 +240,7 @@ class AckReceiver:
 
 
     @classmethod
-    def update_database_status(cls, diff_success, diff_id):
+    def update_database_status(cls, diff_success, diff_id, ext_id):
 
         current_status = Database.get_request_status(diff_id)
 
@@ -250,34 +250,42 @@ class AckReceiver:
                       "current status is not %s !" % (diff_id, REQ_STATUS.ongoing))
                 LOGGER.error(msg)
                 Database.update_field_by_query("message", msg,
-                                               **dict(fullrequestId=diff_id))
+                                               **dict(fullrequestId=diff_id,
+                                                      diff_externalid=ext_id))
             else:
                 msg = ("Diffmet reported that diffusion %s failed." % diff_id)
                 LOGGER.info(msg)
                 Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
-                                                **dict(fullrequestId=diff_id))
+                                                **dict(fullrequestId=diff_id,
+                                                       diff_externalid=ext_id))
                 Database.update_field_by_query("message", msg,
-                                            **dict(fullrequestId=diff_id))
+                                            **dict(fullrequestId=diff_id,
+                                                   diff_externalid=ext_id))
         else:
             if current_status != REQ_STATUS.ongoing:
                 msg = ("Difmet reports success for request %s but "
                       "current status is not %s !" % (diff_id, REQ_STATUS.ongoing))
                 LOGGER.error(msg)
                 Database.update_field_by_query("message", msg,
-                                               **dict(fullrequestId=diff_id))
+                                               **dict(fullrequestId=diff_id,
+                                                      diff_externalid=ext_id))
             else:
                 msg = ("Diffmet reported that diffusion %s succeeded." % diff_id)
                 LOGGER.info(msg)
                 Database.update_field_by_query("requestStatus", REQ_STATUS.succeeded,
-                                                **dict(fullrequestId=diff_id))
+                                                **dict(fullrequestId=diff_id,
+                                                       diff_externalid=ext_id))
                 Database.update_field_by_query("message", msg,
-                                            **dict(fullrequestId=diff_id))
+                                            **dict(fullrequestId=diff_id,
+                                                   diff_externalid=ext_id))
 
     @classmethod
-    def update_database_message(cls, message, diff_id):
+    def update_database_message(cls, message, diff_id, ext_id):
 
         Database.update_field_by_query("message", message,
-                                        **dict(fullrequestId=diff_id))
+                                        **dict(fullrequestId=diff_id,
+                                               diff_externalid=ext_id)
+                                      )
 
 
 class AckCompiler:
@@ -322,7 +330,7 @@ class AckStatus:
             if ack_type == "SEND" and status == "OK":
                 final_status = "success"
                 break
-            elif ack_type != "RECEIVED" and status != "OK":
+            elif ack_type == "SEND" and status != "OK":
                 final_status= "failure"
                 break
 

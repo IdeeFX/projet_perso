@@ -143,7 +143,7 @@ class FileManager:
                 diff_manager.compile_archive()
             else:
                 msg = ("Dissemination failed for requests %s because user settings "
-                       "tmpregex resulted in incorrect filename for difmet" % request_id_list)
+                       "regex resulted in incorrect filename for difmet" % request_id_list)
                 LOGGER.error(msg)
                 for req_id in request_id_list:
                     Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
@@ -341,13 +341,14 @@ class ConnectionPointer:
                 database.session.commit()
             # otherwise, we create a new record
             else:
-                diffusion = Diffusion(diff_externalid=Tools.generate_random_string(),
-                                    fullrequestId=base_record.fullrequestId,
-                                    original_file=filename,
-                                    requestStatus=base_record.requestStatus,
-                                    message=base_record.message,
-                                    Date=base_record.Date,
-                                    rxnotif=base_record.rxnotif)
+                diffusion = Diffusion(primary_key = Tools.generate_random_string(),
+                                      diff_externalid=base_record.diff_externalid,
+                                      fullrequestId=base_record.fullrequestId,
+                                      original_file=filename,
+                                      requestStatus=base_record.requestStatus,
+                                      message=base_record.message,
+                                      Date=base_record.Date,
+                                      rxnotif=base_record.rxnotif)
 
                 database.session.add(diffusion)
                 database.session.commit()
@@ -408,6 +409,7 @@ class ConnectionPointer:
             sftp.close()
             transport.close()
 
+
     def sftp_dir(self, dir_path, destination_dir):
 
         files_to_sftp = []
@@ -443,6 +445,11 @@ class ConnectionPointer:
                 LOGGER.debug('file %s found on openwis staging post',
                              file_path
                              )
+
+                if item == "tmp.zip":
+                    ext = "." + Tools.generate_random_string(5)
+                    destination_path = os.path.join(destination_dir, item + ext)
+
                 files_to_sftp.append((dir_path, file_path, destination_path, False))
 
             sftp.close()
@@ -621,12 +628,13 @@ class DiffMetManager:
             "fileRegex%i" % i, {}) for i in range(1, MAX_REGEX+1)]
 
         new_filename = self.original_filename
-        if new_filename == "tmp.zip":
+        zip_detector = r"^tmp\.zip\..*"
+        if re.match(zip_detector, new_filename) is not None:
             zip_regex = SettingsManager.get("tmpregex")
             if zip_regex is None:
                 LOGGER.error("No regex defined in tmpregex settings !")
             else:
-                new_filename = self._rename_by_regex(new_filename, "tmp.zip", zip_regex)
+                new_filename = self._rename_by_regex(new_filename, zip_detector, zip_regex)
         else:
             for idx, regex_instruction in enumerate(regex_settings):
                 reg = regex_instruction.get("pattern_in", None)
@@ -641,9 +649,8 @@ class DiffMetManager:
 
         if filename_ok:
             # update record with new filename
-            with Database.get_app().app_context():
-                records = Diffusion.query.filter_by(original_file=self.original_filename).all()
-            self.update_database(records, "final_file", new_filename)
+            Database.update_field_by_query("final_file", new_filename,
+                                           **dict(original_file=self.original_filename))
             self.new_filename = new_filename
 
         return filename_ok
@@ -666,21 +673,10 @@ class DiffMetManager:
 
         Tools.remove_file(instr_file_path, "processed instruction", LOGGER)
         Tools.remove_file(self.new_file_path, "processed data", LOGGER)
-        with Database.get_app().app_context():
-            records = Diffusion.query.filter_by(final_file=self.new_filename).all()
-        self.update_database(records, "rxnotif", False)
-        self.update_database(records, "message", "File packaged in tar.gz format")
+        Database.update_field_by_query("rxnotif", False, **dict(final_file=self.new_filename))
+        Database.update_field_by_query("message", "File packaged in tar.gz format",
+                                       **dict(final_file=self.new_filename))
 
-    @staticmethod
-    def update_database(records, key, value):
-
-        # fetch database
-        database = Database.get_database()
-        for rec in records:
-            setattr(rec, key, value)
-
-        with Database.get_app().app_context():
-            database.session.commit()
 
     @staticmethod
     def check_filename(filename):
@@ -688,7 +684,7 @@ class DiffMetManager:
         test_string = os.path.splitext(filename)[0]
 
         re_match = re.match("^([a-zA-Z0-9\-\+]+)\,"
-                            "([a-zA-Z0-9\+]*)\,([a-zA-Z0-9\-\+]+)\,"
+                            "([a-zA-Z0-9\+]*)\,([a-zA-Z0-9\-\+]*)\,"
                             "([0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][0-5][0-9])$", test_string)
 
         if re_match is None:
