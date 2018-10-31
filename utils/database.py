@@ -229,7 +229,7 @@ class Diffusion(DTB.Model):
     status_values = (REQ_STATUS.ongoing, REQ_STATUS.failed, REQ_STATUS.succeeded)
 
     diff_externalid = DTB.Column(DTB.String(
-        RANDOM_ID_LENGTH), nullable=False, primary_key=True)
+        RANDOM_ID_LENGTH), nullable=False)
     fullrequestId = DTB.Column(DTB.String, nullable=False)
     original_file = DTB.Column(DTB.String)
     final_file = DTB.Column(DTB.String)
