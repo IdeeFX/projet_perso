@@ -191,14 +191,19 @@ class Database():
         with cls.get_app().app_context():
             status = cls.get_request_status(req_id)
 
-            rec= Diffusion.query.filter(Diffusion.fullrequestId.\
-                      contains(req_id)).first()
-            if rec is None:
-                message = ("No corresponding request id in database "
-                          "for request %s" % req_id)
-                LOGGER.warning(message)
+            records = Diffusion.query.filter(Diffusion.fullrequestId.\
+                      contains(req_id)).all()
+
+            if len(records) ==0:
+                    message = ("No corresponding request id in database "
+                               "for request %s" % req_id)
+                    LOGGER.warning(message)
             else:
-                message = rec.message
+                msg_list = []
+                for rec in records:
+                    msg_list.append(rec.message)
+
+                message = " --- ".join(msg_list)
 
         return status, message
 
