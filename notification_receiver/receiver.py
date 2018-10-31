@@ -142,7 +142,8 @@ class Notification():
             # create JSON request file
             self.create_request_file()
 
-            diffusion = Diffusion(diff_externalid=diff_id,
+            diffusion = Diffusion(primary_key = Tools.generate_random_string(),
+                                  diff_externalid=diff_id,
                                   fullrequestId=self.req_id+self.hostname,
                                   requestStatus=REQ_STATUS.ongoing,
                                   Date=self._to_datetime(self.date_reception),
@@ -162,7 +163,8 @@ class Notification():
 
     def commit_failure(self, database, diff_id):
 
-        diffusion = Diffusion(diff_externalid=diff_id,
+        diffusion = Diffusion(primary_key = Tools.generate_random_string(),
+                              diff_externalid=diff_id,
                               fullrequestId=self.req_id,
                               requestStatus=REQ_STATUS.failed,
                               Date=self._to_datetime(self.date_reception),

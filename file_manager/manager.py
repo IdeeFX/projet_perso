@@ -341,13 +341,14 @@ class ConnectionPointer:
                 database.session.commit()
             # otherwise, we create a new record
             else:
-                diffusion = Diffusion(diff_externalid=base_record.diff_externalid,
-                                    fullrequestId=base_record.fullrequestId,
-                                    original_file=filename,
-                                    requestStatus=base_record.requestStatus,
-                                    message=base_record.message,
-                                    Date=base_record.Date,
-                                    rxnotif=base_record.rxnotif)
+                diffusion = Diffusion(primary_key = Tools.generate_random_string(),
+                                      diff_externalid=base_record.diff_externalid,
+                                      fullrequestId=base_record.fullrequestId,
+                                      original_file=filename,
+                                      requestStatus=base_record.requestStatus,
+                                      message=base_record.message,
+                                      Date=base_record.Date,
+                                      rxnotif=base_record.rxnotif)
 
                 database.session.add(diffusion)
                 database.session.commit()

@@ -228,6 +228,8 @@ class Diffusion(DTB.Model):
 
     status_values = (REQ_STATUS.ongoing, REQ_STATUS.failed, REQ_STATUS.succeeded)
 
+    primary_key = DTB.Column(DTB.String(
+        RANDOM_ID_LENGTH), nullable=False, primary_key=True)
     diff_externalid = DTB.Column(DTB.String(
         RANDOM_ID_LENGTH), nullable=False)
     fullrequestId = DTB.Column(DTB.String, nullable=False)
@@ -239,7 +241,8 @@ class Diffusion(DTB.Model):
     rxnotif = DTB.Column(DTB.Boolean, nullable=False)
 
     def __repr__(self):
-        repr_ = ('<Diffusion(diff_externalid={diff_externalid}, '
+        repr_ = ('<Diffusion(primary_key={primary_key}, '
+                 'diff_externalid={diff_externalid}, '
                  'fullrequestId={fullrequestId}, '
                  'original_file={original_file}, '
                  'final_file={final_file}, '
