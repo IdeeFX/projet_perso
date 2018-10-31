@@ -46,7 +46,7 @@ class CompleteTest(unittest.TestCase):
         os.mkdir(self.ack_dir)
 
         # create files on staging post
-        for i in range(1):
+        for i in range(2):
             with open(join(self.staging_post,"A_SNFR30LFPW270700_C_LFPW_20180927070000_%i.txt" % i),"w") as file_out:
                 file_out.write("Dummy staging post test file")
 
@@ -199,7 +199,23 @@ class CompleteTest(unittest.TestCase):
                             "<email_adress>yves.goupil@meteo.fr</email_adress>\n"
                             "<comment>nom de fichier en attachement au courriel: machin</comment>\n"
                         "</acquittement>\n"
-                        "<acquittementnumber>2</acquittementnumber>\n"
+                        "<acquittement>\n"
+                            "<date>2018-10-01T12:31:46Z</date>\n"
+                            "<type>SEND</type>\n"
+                            "<status>OK</status>\n"
+                            "<productid>fr-met,SNFR30LFPW011000LFPW,00000-wiss,20181001100000</productid>\n"
+                            "<product_internalid>66180_20181001123146</product_internalid>\n"
+                            "<send2>0</send2>\n"
+                            "<diffusion_externalid>{ext_id1}</diffusion_externalid>\n"
+                            "<diffusion_internalid>66181_20181001123146</diffusion_internalid>\n"
+                            "<channel>EMAIL</channel>\n"
+                            "<media>EMAIL</media>\n"
+                            "<use_standby>0</use_standby>\n"
+                            "<try_number>1</try_number>\n"
+                            "<email_adress>yves.goupil@meteo.fr</email_adress>\n"
+                            "<comment>nom de fichier en attachement au courriel: machin</comment>\n"
+                        "</acquittement>\n"
+                        "<acquittementnumber>3</acquittementnumber>\n"
                         "</acquittements>".format(ext_id1=ext_id1))
 
         thr = Thread(target=AckReceiver.process, kwargs={"max_loops":2})
