@@ -768,7 +768,7 @@ class DiffMetManager:
             if diff_info["fileName"] != "":
                 etree.SubElement(element, prefix + "ftp_final_file_name").text = Tools.ack_str(diff_info["fileName"])
                 etree.SubElement(element, prefix + "ftp_tmp_file_name").text = Tools.ack_str(diff_info["fileName"]+ ".tmp")
-            elif self.original_filename == "tmp.zip":
+            elif re.match(r"^tmp\.zip", self.original_filename) is not None:
                 etree.SubElement(element, prefix + "ftp_final_file_name").text = Tools.ack_str(self.new_filename)
                 etree.SubElement(element, prefix + "ftp_tmp_file_name").text = Tools.ack_str(self.new_filename + ".tmp")
             else:
