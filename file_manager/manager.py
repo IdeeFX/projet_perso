@@ -224,7 +224,7 @@ class FileManager:
             entry for entry in list_entries if not os.path.isdir(entry)]
         list_files.sort(key=lambda x: os.stat(x).st_mtime)
         if overflow is not None and len(list_files) > overflow:
-            LOGGER.error("%s repertory is overflowing. "
+            LOGGER.warning("%s repertory is overflowing. "
                          "Number of files %i over the limit %i",
                          cls.dir_a, len(list_files), overflow)
         list_files = list_files[:maxfiles]
