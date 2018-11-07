@@ -201,7 +201,7 @@ class DifmetSender:
         list_files = [e for e in list_entries if not os.path.isdir(e)]
         list_files.sort(key=lambda x: os.stat(x).st_mtime)
         if overflow is not None and len(list_files) > overflow:
-            LOGGER.error("%s repertory is overflowing. "
+            LOGGER.warning("%s repertory is overflowing. "
                          "Number of files %i over the limit %i",
                          cls.dir_c, len(list_files), overflow)
         list_files = list_files[:maxfiles]
