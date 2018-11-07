@@ -74,7 +74,7 @@ class DifmetSender:
                     # would require looking at the file compressed though
                     Tools.remove_file(file_, "difmet archive", LOGGER)
                     continue
-                size = os.stat(file_)
+                size = os.stat(file_).st_size
 
                 timeout= cls.compute_timeout(size, file_)
 
