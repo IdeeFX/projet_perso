@@ -548,7 +548,7 @@ class ConnectionPointer:
             LOGGER.debug("Sftp debug timeout set to %s s", timeout)
         else:
             # conversion in Mbits/s with shift_expr << operator
-            timeout = required_bandwith/bandwidth*1 << 17*TIMEOUT_BUFFER
+            timeout = (required_bandwith*1 << 17)/bandwidth*TIMEOUT_BUFFER
             LOGGER.debug("Sftp timeout computed to %s s", timeout)
         # start download
 

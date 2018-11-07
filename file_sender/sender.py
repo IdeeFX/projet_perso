@@ -176,7 +176,7 @@ class DifmetSender:
                          timeout, file_)
         else:
             # conversion in Mbits/s with shift_expr << operator
-            timeout = required_bandwith/bandwidth*1 << 17*TIMEOUT_BUFFER
+            timeout = (required_bandwith*1 << 17)/bandwidth*TIMEOUT_BUFFER
             LOGGER.debug("Ftp timeout computed to %s s for file %s.",
                          timeout, file_)
 
