@@ -229,7 +229,7 @@ class AckReceiver:
                     ack_type,
                     status))
                 LOGGER.error(msg)
-                cls.update_database_message(msg, req_id, ext_di)
+                cls.update_database_message(msg, req_id, ext_id)
 
 
 
