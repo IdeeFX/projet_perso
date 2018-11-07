@@ -4,7 +4,6 @@ formatters:
     simple:
         format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-# TODO surcharge de /tmp/ via logdir de settings
 handlers:
     console:
         class: logging.StreamHandler
@@ -13,133 +12,152 @@ handlers:
         stream: ext://sys.stdout
 
     info_file_handler:
-        class: logging.handlers.RotatingFileHandler
+        class: logging.handlers.TimedRotatingFileHandler
         level: INFO
         formatter: simple
         filename: /tmp/info.log  # TODO explain how the filenames are managed
-        maxBytes: 10485760 # 10MB
+        when: 'D'
+        interval: 1
+        backupCount: 20
+        encoding: utf8
+
+    all_handler:
+        class: logging.handlers.TimedRotatingFileHandler
+        level: DEBUG
+        formatter: simple
+        filename: /tmp/full_log.log  # TODO explain how the filenames are managed
+        when: 'D'
+        interval: 1
         backupCount: 20
         encoding: utf8
 
     error_file_handler:
-        class: logging.handlers.RotatingFileHandler
+        class: logging.handlers.TimedRotatingFileHandler
         level: ERROR
         formatter: simple
         filename: /tmp/errors.log
-        maxBytes: 10485760 # 10MB
+        interval: 1
+        when: 'D'
         backupCount: 20
         encoding: utf8
 
     server_file_handler:
-        class: logging.handlers.RotatingFileHandler
+        class: logging.handlers.TimedRotatingFileHandler
         level: DEBUG
         formatter: simple
         filename: /tmp/server.log
-        maxBytes: 10485760 # 10MB
+        interval: 1
+        when: 'D'
         backupCount: 20
         encoding: utf8
 
     manager_file_handler:
-        class: logging.handlers.RotatingFileHandler
+        class: logging.handlers.TimedRotatingFileHandler
         level: DEBUG
         formatter: simple
         filename: /tmp/manager.log
-        maxBytes: 10485760 # 10MB
+        interval: 1
+        when: 'D'
         backupCount: 20
         encoding: utf8
 
     sender_file_handler:
-        class: logging.handlers.RotatingFileHandler
+        class: logging.handlers.TimedRotatingFileHandler
         level: DEBUG
         formatter: simple
         filename: /tmp/sender.log
-        maxBytes: 10485760 # 10MB
+        interval: 1
+        when: 'D'
         backupCount: 20
         encoding: utf8
 
     ack_file_handler:
-        class: logging.handlers.RotatingFileHandler
+        class: logging.handlers.TimedRotatingFileHandler
         level: DEBUG
         formatter: simple
         filename: /tmp/ack.log
-        maxBytes: 10485760 # 10MB
+        interval: 1
+        when: 'D'
         backupCount: 20
         encoding: utf8
 
     difmet_ack_message_handler:
-        class: logging.handlers.RotatingFileHandler
+        class: logging.handlers.TimedRotatingFileHandler
         level: DEBUG
         formatter: simple
         filename: /tmp/difmet_ack_messages.log
-        maxBytes: 10485760 # 10MB
+        interval: 1
+        when: 'D'
         backupCount: 20
         encoding: utf8
 
     difmet_alarm_message_handler:
-        class: logging.handlers.RotatingFileHandler
+        class: logging.handlers.TimedRotatingFileHandler
         level: DEBUG
         formatter: simple
         filename: /tmp/difmet_alarm_messages.log
-        maxBytes: 10485760 # 10MB
+        interval: 1
+        when: 'D'
         backupCount: 20
         encoding: utf8
 
 
     connections_handler:
-        class: logging.handlers.RotatingFileHandler
+        class: logging.handlers.TimedRotatingFileHandler
         level: INFO
         formatter: simple
         filename: /tmp/connections.log
-        maxBytes: 10485760 # 10MB
+        interval: 1
+        when: 'D'
         backupCount: 20
         encoding: utf8
 
 loggers:
     file_manager.manager:
         level: DEBUG
-        handlers: [manager_file_handler, info_file_handler, error_file_handler]
+        handlers: [manager_file_handler, info_file_handler, error_file_handler, all_handler]
         propagate: no
 
     file_sender.sender:
         level: DEBUG
-        handlers: [sender_file_handler, info_file_handler, error_file_handler]
+        handlers: [sender_file_handler, info_file_handler, error_file_handler, all_handler]
         propagate: no
 
     ack_receiver.ack_receiver:
         level: DEBUG
-        handlers: [ack_file_handler, info_file_handler, error_file_handler]
+        handlers: [ack_file_handler, info_file_handler, error_file_handler, all_handler]
         propagate: no
 
     difmet_ack_messages:
         level: DEBUG
-        handlers: [difmet_ack_message_handler]
+        handlers: [difmet_ack_message_handler, all_handler]
         propagate: no
 
     difmet_alarm_messages:
         level: DEBUG
-        handlers: [difmet_alarm_message_handler]
+        handlers: [difmet_alarm_message_handler, all_handler]
         propagate: no
 
     notification_receiver.receiver:
         level: DEBUG
-        handlers: [server_file_handler, info_file_handler, error_file_handler]
+        handlers: [server_file_handler, info_file_handler, error_file_handler, all_handler]
         propagate: no
 
     webservice.server.soapInterface:
         level: DEBUG
-        handlers: [server_file_handler, info_file_handler, error_file_handler]
+        handlers: [server_file_handler, info_file_handler, error_file_handler, all_handler]
         propagate: no
 
     webservice.server.application:
         level: DEBUG
-        handlers: [server_file_handler, info_file_handler, error_file_handler]
+        handlers: [server_file_handler, info_file_handler, error_file_handler, all_handler]
         propagate: no
 
     paramiko.transport:
         level: INFO
-        handlers: [manager_file_handler, connections_handler]
+        handlers: [manager_file_handler, connections_handler, all_handler]
         propagate: no
 
 root:
     level: INFO
-    handlers: [console, info_file_handler, error_file_handler]
+    handlers: [console, info_file_handler, error_file_handler, all_handler]
