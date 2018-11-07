@@ -45,7 +45,7 @@ getSFTPlimitConn: 1
 processFilesize: 1000
 # Durée de conservation des fichiers de directives provisoires (en seconde)
 keepfiletime: 14400
-# Durée de conservation des fichiers de directives provisoires (en seconde)
+# Durée de conservation des fichiers à envoyer à difmet par FTP
 keepfiletimeSender: 86400
 # Nb de fichiers d'instructions in dir_A à partir duquel un warning est envoyé
 ManagerOverflow: 100
