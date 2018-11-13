@@ -16,7 +16,7 @@ handlers:
         level: INFO
         formatter: simple
         filename: /tmp/info.log  # TODO explain how the filenames are managed
-        when: 'D'
+        when: 'midnight'
         interval: 1
         backupCount: 20
         encoding: utf8
@@ -26,7 +26,7 @@ handlers:
         level: DEBUG
         formatter: simple
         filename: /tmp/full_log.log  # TODO explain how the filenames are managed
-        when: 'D'
+        when: 'midnight'
         interval: 1
         backupCount: 20
         encoding: utf8
@@ -37,7 +37,7 @@ handlers:
         formatter: simple
         filename: /tmp/errors.log
         interval: 1
-        when: 'D'
+        when: 'midnight'
         backupCount: 20
         encoding: utf8
 
@@ -47,7 +47,7 @@ handlers:
         formatter: simple
         filename: /tmp/server.log
         interval: 1
-        when: 'D'
+        when: 'midnight'
         backupCount: 20
         encoding: utf8
 
@@ -57,7 +57,7 @@ handlers:
         formatter: simple
         filename: /tmp/manager.log
         interval: 1
-        when: 'D'
+        when: 'midnight'
         backupCount: 20
         encoding: utf8
 
@@ -67,7 +67,7 @@ handlers:
         formatter: simple
         filename: /tmp/sender.log
         interval: 1
-        when: 'D'
+        when: 'midnight'
         backupCount: 20
         encoding: utf8
 
@@ -77,7 +77,7 @@ handlers:
         formatter: simple
         filename: /tmp/ack.log
         interval: 1
-        when: 'D'
+        when: 'midnight'
         backupCount: 20
         encoding: utf8
 
@@ -87,7 +87,7 @@ handlers:
         formatter: simple
         filename: /tmp/difmet_ack_messages.log
         interval: 1
-        when: 'D'
+        when: 'midnight'
         backupCount: 20
         encoding: utf8
 
@@ -97,7 +97,7 @@ handlers:
         formatter: simple
         filename: /tmp/difmet_alarm_messages.log
         interval: 1
-        when: 'D'
+        when: 'midnight'
         backupCount: 20
         encoding: utf8
 
@@ -108,7 +108,7 @@ handlers:
         formatter: simple
         filename: /tmp/connections.log
         interval: 1
-        when: 'D'
+        when: 'midnight'
         backupCount: 20
         encoding: utf8
 
