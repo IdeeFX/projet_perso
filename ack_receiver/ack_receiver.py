@@ -321,6 +321,9 @@ class AckStatus:
         self.req_id = req_id
         self.prod_id = prod_id
         self.status_to_process = []
+        self.counter = 0
+        #we fetch the number of records that have to be checked ?
+        self.records_number = Database.get_records_number(req_id)
 
     def compile_status(self):
 
@@ -329,10 +332,15 @@ class AckStatus:
         for ack_type, status in self.status_to_process:
             if ack_type == "SEND" and status == "OK":
                 final_status = "success"
-                break
+                self.counter+=1
             elif ack_type == "SEND" and status != "OK":
                 final_status= "failure"
                 break
+            
+        #we check that all requested files have been sent
+        if final_status=="success" and self.counter!=self.records_number:
+            final_status = "ongoing"
+
 
         return ack_type, status, final_status
 
