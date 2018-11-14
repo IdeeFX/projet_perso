@@ -350,8 +350,8 @@ class AckStatus:
             nb_diff = Database.get_diffusion_number(self.req_id)
             if self.records_number!=nb_diff:
                 final_status = "ongoing"
-                LOGGER.info("ack file reports that %i diffusion have been performed on
-                            "the %i required for diffusions  %s", nb_diff, 
+                LOGGER.info("ack file reports that %i diffusion have been performed on"
+                            "the %i required for diffusion  %s", nb_diff, 
                             self.records_number, self.req_id)
 
 
