@@ -141,6 +141,20 @@ class Database():
 
         return status
 
+
+    @classmethod
+    def get_records_number(cls,req_id):
+
+        with cls.get_app().app_context():
+            records = Diffusion.query.filter(Diffusion.fullrequestId.contains(req_id)).all()
+
+        # if list is empty, no records
+        if records == []:
+            LOGGER.warning("Requesting status for non existing request "
+                           "Id %s in database.", req_id)
+        
+        return len(records)
+
     @classmethod
     def get_creation_date(cls, req_id):
         with cls.get_app().app_context():
