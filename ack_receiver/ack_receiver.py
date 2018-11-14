@@ -318,12 +318,16 @@ class AckStatus:
         if req_id is None:
             LOGGER.error("Couldn't retrieve dissemination requestId "
                         "from external_id %s", ext_id)
+            self.records_number = 0
+        else:
+            #we fetch the number of records that have to be checked
+            self.records_number = Database.get_records_number(req_id)
         self.req_id = req_id
         self.prod_id = prod_id
         self.status_to_process = []
         self.counter = 0
-        #we fetch the number of records that have to be checked ?
-        self.records_number = Database.get_records_number(req_id)
+
+        
 
     def compile_status(self):
 
