@@ -53,7 +53,12 @@ class Notification():
         # priority is scaled from 1 (highest) to 4 (lowest)
         # sla is 0 (BRONZE), 1 (SILVER), 2 (GOLD)
 
-        if strtobool(SettingsManager.get("sla")) == True:
+        priority_activated = SettingsManager.get("sla")
+
+        if type(priority_activated) == str:
+            priority_activated = strtobool(priority_activated)
+
+        if priority_activated == False:
             result = SettingsManager.get("defaultPriority") or PRIORITIES.default
         elif priority ==1:
             result = PRIORITIES.maximum
