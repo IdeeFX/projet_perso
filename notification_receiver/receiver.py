@@ -6,6 +6,7 @@ import os
 from time import gmtime, strftime
 from datetime import datetime
 from settings.settings_manager import SettingsManager
+from distutils.util import strtobool
 from utils.setup_tree import HarnessTree
 from utils.database import Database, Diffusion
 from utils.const import REQ_STATUS, PRIORITIES
@@ -52,7 +53,14 @@ class Notification():
         # priority is scaled from 1 (highest) to 4 (lowest)
         # sla is 0 (BRONZE), 1 (SILVER), 2 (GOLD)
 
-        if priority ==1:
+        priority_activated = SettingsManager.get("sla")
+
+        if type(priority_activated) == str:
+            priority_activated = strtobool(priority_activated)
+
+        if priority_activated == False:
+            result = SettingsManager.get("defaultPriority") or PRIORITIES.default
+        elif priority ==1:
             result = PRIORITIES.maximum
         elif priority >=2:
             default_priority = SettingsManager.get("defaultPriority") or PRIORITIES.default
@@ -148,7 +156,8 @@ class Notification():
                                   requestStatus=REQ_STATUS.ongoing,
                                   Date=self._to_datetime(self.date_reception),
                                   rxnotif=True,
-                                  message="Created record in SQL database")
+                                  message="Created record in SQL database",
+                                  nb_diff=0)
             with Database.get_app().app_context():
                 database.session.add(diffusion)
                 database.session.commit()
@@ -168,7 +177,8 @@ class Notification():
                               fullrequestId=self.req_id,
                               requestStatus=REQ_STATUS.failed,
                               Date=self._to_datetime(self.date_reception),
-                              rxnotif=True)
+                              rxnotif=True,
+                              nb_diff=0)
 
         with Database.get_app().app_context():
             database.session.add(diffusion)

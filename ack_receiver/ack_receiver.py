@@ -317,22 +317,44 @@ class AckStatus:
         req_id = Database.get_id_by_query(**dtb_key)
         if req_id is None:
             LOGGER.error("Couldn't retrieve dissemination requestId "
-                        "from external_id %s", diff_external_id)
+                        "from external_id %s", ext_id)
+            self.records_number = 0
+        else:
+            #we fetch the number of records that have to be checked
+            self.records_number = Database.get_records_number(req_id)
         self.req_id = req_id
         self.prod_id = prod_id
         self.status_to_process = []
+
+        
 
     def compile_status(self):
 
         final_status = "ongoing"
 
+        counter=0
         for ack_type, status in self.status_to_process:
             if ack_type == "SEND" and status == "OK":
                 final_status = "success"
-                break
+                counter+=1
             elif ack_type == "SEND" and status != "OK":
                 final_status= "failure"
                 break
+            
+        
+        if final_status=="success":
+            # we update the number of diffusion reported
+            Database.update_diffusion_number(self.req_id, counter)
+            
+            #we check that all requested files have been sent
+            nb_diff = Database.get_diffusion_number(self.req_id)
+            if self.records_number!=nb_diff:
+                final_status = "ongoing"
+                LOGGER.info("ack file reports that %i diffusion have been performed on"
+                            "the %i required for diffusion  %s", nb_diff, 
+                            self.records_number, self.req_id)
+
+
 
         return ack_type, status, final_status
 
