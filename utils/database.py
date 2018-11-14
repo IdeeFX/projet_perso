@@ -170,6 +170,7 @@ class Database():
         
         return nb_diff
 
+    @classmethod
     def update_diffusion_number(cls, req_id, nb_diff_reported):
 
         with cls.get_app().app_context():
