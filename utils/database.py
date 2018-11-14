@@ -155,6 +155,38 @@ class Database():
         
         return len(records)
 
+
+    @classmethod
+    def get_diffusion_number(cls,req_id):
+        with cls.get_app().app_context():
+            record = Diffusion.query.filter(Diffusion.fullrequestId.contains(req_id)).first()
+
+        if record is not None:
+            nb_diff = record.nb_diff
+        else:
+            LOGGER.warning("Requesting status for non existing request "
+                           "Id %s in database.", req_id)
+            nb_diff = 0
+        
+        return nb_diff
+
+    def update_diffusion_number(cls, req_id, nb_diff_reported):
+
+        with cls.get_app().app_context():
+            records = Diffusion.query.filter(Diffusion.fullrequestId.contains(req_id)).all()
+
+            # if list is empty, no records
+            if records == []:
+                LOGGER.warning("Requesting status for non existing request "
+                            "Id %s in database.", req_id)
+            else:
+                for rec in records:
+                    rec.nb_diff =  rec.nb_diff + nb_diff_reported
+
+                cls._dtb.session.commit()
+
+
+
     @classmethod
     def get_creation_date(cls, req_id):
         with cls.get_app().app_context():
@@ -253,6 +285,7 @@ class Diffusion(DTB.Model):
     message = DTB.Column(DTB.String)
     Date = DTB.Column(DTB.DateTime, nullable=False)
     rxnotif = DTB.Column(DTB.Boolean, nullable=False)
+    nb_diff = DTB.Column(DTB.Integer)
 
     def __repr__(self):
         repr_ = ('<Diffusion(primary_key={primary_key}, '
@@ -264,6 +297,7 @@ class Diffusion(DTB.Model):
                  'message={message}, '
                  'Date={Date}, '
                  'rxnotif={rxnotif}, '
+                 'nb_diff={nb_diff}, '
                  ')>'.format(**self.__dict__))
 
         return repr_

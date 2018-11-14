@@ -325,7 +325,6 @@ class AckStatus:
         self.req_id = req_id
         self.prod_id = prod_id
         self.status_to_process = []
-        self.counter = 0
 
         
 
@@ -333,17 +332,28 @@ class AckStatus:
 
         final_status = "ongoing"
 
+        counter=0
         for ack_type, status in self.status_to_process:
             if ack_type == "SEND" and status == "OK":
                 final_status = "success"
-                self.counter+=1
+                counter+=1
             elif ack_type == "SEND" and status != "OK":
                 final_status= "failure"
                 break
             
-        #we check that all requested files have been sent
-        if final_status=="success" and self.counter!=self.records_number:
-            final_status = "ongoing"
+        
+        if final_status=="success":
+            # we update the number of diffusion reported
+            Database.update_diffusion_number(self.req_id, counter)
+            
+            #we check that all requested files have been sent
+            nb_diff = Database.get_diffusion_number(self.req_id)
+            if self.records_number!=nb_diff:
+                final_status = "ongoing"
+                LOGGER.info("ack file reports that %i diffusion have been performed on
+                            "the %i required for diffusions  %s", nb_diff, 
+                            self.records_number, self.req_id)
+
 
 
         return ack_type, status, final_status

@@ -349,7 +349,8 @@ class ConnectionPointer:
                                       requestStatus=base_record.requestStatus,
                                       message=base_record.message,
                                       Date=base_record.Date,
-                                      rxnotif=base_record.rxnotif)
+                                      rxnotif=base_record.rxnotif,
+                                      nb_diff=base_record.nb_diff)
 
                 database.session.add(diffusion)
                 database.session.commit()
