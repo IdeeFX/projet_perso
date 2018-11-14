@@ -317,7 +317,7 @@ class AckStatus:
         req_id = Database.get_id_by_query(**dtb_key)
         if req_id is None:
             LOGGER.error("Couldn't retrieve dissemination requestId "
-                        "from external_id %s", diff_external_id)
+                        "from external_id %s", ext_id)
         self.req_id = req_id
         self.prod_id = prod_id
         self.status_to_process = []
