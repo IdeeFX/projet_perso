@@ -12,7 +12,7 @@ from file_manager.manager import FileManager
 from file_sender.sender import DifmetSender
 from ack_receiver.ack_receiver import AckReceiver
 from utils.log_setup import setup_logging
-from settings.settings_manager import SettingsManager
+from settings.settings_manager import SettingsManager, DebugSettingsManager
 from utils.tools import Tools
 from utils.const import ENV
 
@@ -20,7 +20,7 @@ from utils.const import ENV
 # a thread implementation to follow more easily the overall process
 # in a debugger.
 try:
-    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or DebugSettingsManager.get("debug")))
 except ValueError:
     DEBUG = False
 

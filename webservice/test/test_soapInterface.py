@@ -38,12 +38,12 @@ class TestSoapInterface(unittest.TestCase):
             yaml.dump(dict(SettingsManager._parameters), file_)
         SettingsManager.reset()
         self.hostname = hostname = socket.gethostname()
-        port = os.environ.get(ENV.port) or PORT
-        os.environ[ENV.soap_url] = ('http://{hostname}:{port}/harnais-diss-v2/'
+        self.port = port = os.environ.get(ENV.port) or PORT
+        self.soap_url = ('http://{hostname}:{port}/harnais-diss-v2/'
                                     'webservice/Dissemination?wsdl'.format(hostname=hostname,
                                     port=port))
         SoapServer.create_server()
-        self.client = Client(os.environ[ENV.soap_url])
+        self.client = Client(self.soap_url)
         self.factory = self.client.type_factory('http://dissemination.harness.openwis.org/')
 
 

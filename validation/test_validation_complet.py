@@ -31,9 +31,8 @@ class CompleteTest(unittest.TestCase):
 
     def setUp(self):
 
-        os.environ[ENV.test_sftp] = "True"
-        os.environ[ENV.debug] = "True"
-
+        DebugSettingsManager.debug = "True"
+        DebugSettingsManager.test_sftp = "True"
         self.tmpdir  = mkdtemp(prefix='harnais_')
         harnais_dir = join(self.tmpdir, "harnais")
         os.mkdir(harnais_dir)
@@ -53,10 +52,11 @@ class CompleteTest(unittest.TestCase):
 
 
         self.hostname = hostname = socket.gethostname()
-        port = os.environ.get(ENV.port) or PORT
-        os.environ[ENV.soap_url] = ('http://{hostname}:{port}/harnais-diss-v2/'
-                                    'webservice/Dissemination?wsdl'.format(hostname=hostname,
-                                    port=port))
+        self.port = port = os.environ.get(ENV.port) or PORT
+        self.soap_url = ('http://{hostname}:{port}/harnais-diss-v2/'
+                         'webservice/Dissemination?wsdl'.format(hostname=hostname,
+                         port=port))
+
 
         SettingsManager.load_settings()
         SettingsManager.update(dict(harnaisLogdir=harnais_dir,
@@ -86,7 +86,7 @@ class CompleteTest(unittest.TestCase):
     def test_complet(self):
         SettingsManager.load_settings()
         SoapServer.create_server()
-        client = Client(os.environ[ENV.soap_url])
+        client = Client(self.soap_url)
         factory = client.type_factory('http://dissemination.harness.openwis.org/')
 
         test_diffusion = factory.MailDiffusion(address="dummy@dummy.com",
@@ -220,7 +220,7 @@ class CompleteTest(unittest.TestCase):
 
         # check acquittement
         SoapServer.create_server()
-        client = Client(os.environ[ENV.soap_url])
+        client = Client(self.soap_url)
         factory = client.type_factory('http://dissemination.harness.openwis.org/')
         result = client.service.monitorDissemination(requestId="123456")
         print(result)
@@ -238,11 +238,10 @@ class CompleteTest(unittest.TestCase):
         rmtree(self.tmpdir)
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
-        os.environ.pop(ENV.test_sftp)
-        os.environ.pop(ENV.debug)
         tempfile.tempdir = None
         Database.reset()
         SettingsManager.reset()
+        DebugSettingsManager.reset()
 
 if __name__ == "__main__":
     unittest.main()

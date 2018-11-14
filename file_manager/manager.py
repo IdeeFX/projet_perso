@@ -25,11 +25,11 @@ from webservice.server.application import APP
 
 
 try:
-    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or DebugSettingsManager.get("debug")))
 except ValueError:
     DEBUG = False
 try:
-    TEST_SFTP = bool(strtobool(os.environ.get("MFSERV_HARNESS_TEST_SFTP") or "False"))
+    TEST_SFTP = bool(strtobool(os.environ.get("MFSERV_HARNESS_TEST_SFTP") or DebugSettingsManager.get("test_sftp")))
 except ValueError:
     TEST_SFTP = False
 
