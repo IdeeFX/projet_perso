@@ -1,6 +1,8 @@
 harnais:
   # Repertoire principal du harnais
   dir: /tmp/harnais/
+  # Chemin du répertoire des logs                                                         
+  logdir: /tmp/harnais/logs
   # Repertoire de réception des ack de difmet
   ackdir: /tmp/ack
   # Synchronisation en seconde entre le serveur
@@ -77,7 +79,7 @@ defaultpriority: 85
 diffFileName: fr-meteo-harnaisdiss
 # Durée de fin de vie d’un fichier en minute par rapport à l’heure système
 # pour le champ "end_to_live_date"
-fileendlive:
+fileendlive: 1440
 # Temps en seconde d’attente avant le traitement des archives difmet à expédier
 sendFTPIdle: 10
 # Nombre de transferts FTP concurrentiels
