@@ -370,7 +370,6 @@ class ConnectionPointer:
                 file_path = os.path.join(dir_path, item)
                 # folders are ignored
                 if os.path.isdir(file_path):
-                    files_fetched.append(file_path)
                     continue
                 destination_path = os.path.join(destination_dir, item)
                 # if the file has already been fetched by a previous instruction file,
@@ -380,7 +379,7 @@ class ConnectionPointer:
                                   file_path, destination_path)
                     shutil.copy(file_path, destination_path)
                 self.update_filename(item)
-                files_fetched.append(file_path)
+                files_fetched.append(destination_path)
             fetch_ok = True
         elif self.hostname == "localhost" and \
              not os.path.isdir(dir_path) and \
@@ -468,16 +467,20 @@ class ConnectionPointer:
             timeout = self.compute_timeout(required_bandwith)
 
             nb_downloads = sum([not i[3] for i in files_to_sftp])
-            try:
-                LOGGER.debug("Attempting download of %i files, for a total size of "
-                             " %f. Timeout is fixed at %s s.", nb_downloads,
-                             required_bandwith, timeout)
-                results.get(timeout=timeout)
+            if nb_downloads == 0:
+                LOGGER.debug("No files to download or required files already downloaded once.")
                 sftp_success = True
-            except multiprocessing.TimeoutError:
-                LOGGER.error(
-                    "Timeout exceeded for fetching files on staging post.")
-                sftp_success = False
+            else:
+                try:
+                    LOGGER.debug("Attempting download of %i files, for a total size of "
+                                " %f. Timeout is fixed at %s s.", nb_downloads,
+                                required_bandwith, timeout)
+                    results.get(timeout=timeout)
+                    sftp_success = True
+                except multiprocessing.TimeoutError:
+                    LOGGER.error(
+                        "Timeout exceeded for fetching files on staging post.")
+                    sftp_success = False
 
             # check download success and rename zip if necessary then update database
             sftp_success = self.check_download_success(files_to_sftp, sftp_success)
