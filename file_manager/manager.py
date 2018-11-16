@@ -227,7 +227,7 @@ class FileManager:
             LOGGER.warning("%s repertory is overflowing. "
                          "Number of files %i over the limit %i",
                          cls.dir_a, len(list_files), overflow)
-        list_files = list_files[:maxfiles]
+        list_files = list_files[-maxfiles:]
 
         return list_files
 
@@ -481,7 +481,7 @@ class ConnectionPointer:
                         "Timeout exceeded for fetching files on staging post.")
                     sftp_success = False
 
-            # check download success and rename zip if necessary then update database
+            # check download success and update database
             sftp_success = self.check_download_success(files_to_sftp, sftp_success)
 
             sftp.close()
@@ -719,10 +719,12 @@ class DiffMetManager:
     def _get_end_date():
 
         limit = SettingsManager.get("fileEndLive") or 0
+        if limit ==0:
+            end_date = None
+        else:
+            end_date = datetime.utcnow() + timedelta(seconds=limit*60)
 
-        end_date = datetime.utcnow() + timedelta(seconds=limit*60)
-
-        end_date = end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            end_date = end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         return end_date
 
@@ -820,7 +822,9 @@ class DiffMetManager:
         etree.SubElement(product,"file_size").text = Tools.ack_str(self._get_file_size())
         etree.SubElement(product,"priority").text = Tools.ack_str(self._get_priority())
         etree.SubElement(product,"archive").text = "0"
-        etree.SubElement(product,"end_to_live_date").text = Tools.ack_str(self._get_end_date())
+        end_date = self._get_end_date()
+        if end_date is not None:
+            etree.SubElement(product,"end_to_live_date").text = Tools.ack_str(end_date)
 
         for req_id in self.id_list:
             diffusion = etree.SubElement(product,"diffusion")
