@@ -116,7 +116,7 @@ class Database():
         status = REQ_STATUS.ongoing
 
         with cls.get_app().app_context():
-            records = Diffusion.query.filter(Diffusion.fullrequestId.contains(req_id)).all()
+            records = Diffusion.query.filter_by(**dict(fullrequestId=req_id)).all()
 
         # if list is empty, no records
         if records == []:
@@ -133,7 +133,7 @@ class Database():
             elif rec.requestStatus == REQ_STATUS.ongoing:
                 status = REQ_STATUS.ongoing
                 all_disseminated = False
-            elif rec.rxnotif != False:
+            elif rec.rxnotif == False:
                 all_disseminated = False
 
         if status != REQ_STATUS.failed and not all_disseminated:
@@ -146,7 +146,7 @@ class Database():
     def get_records_number(cls,req_id):
 
         with cls.get_app().app_context():
-            records = Diffusion.query.filter(Diffusion.fullrequestId.contains(req_id)).all()
+            records = Diffusion.query.filter_by(**dict(fullrequestId=req_id)).all()
 
         # if list is empty, no records
         if records == []:
@@ -159,32 +159,13 @@ class Database():
     @classmethod
     def get_diffusion_number(cls,req_id):
         with cls.get_app().app_context():
-            record = Diffusion.query.filter(Diffusion.fullrequestId.contains(req_id)).first()
+            records = Diffusion.query.filter_by(**dict(rxnotif=True, fullrequestId=req_id)).all()
 
-        if record is not None:
-            nb_diff = record.nb_diff
-        else:
+        if records == []:
             LOGGER.warning("Requesting status for non existing request "
                            "Id %s in database.", req_id)
-            nb_diff = 0
         
-        return nb_diff
-
-    @classmethod
-    def update_diffusion_number(cls, req_id, nb_diff_reported):
-
-        with cls.get_app().app_context():
-            records = Diffusion.query.filter(Diffusion.fullrequestId.contains(req_id)).all()
-
-            # if list is empty, no records
-            if records == []:
-                LOGGER.warning("Requesting status for non existing request "
-                            "Id %s in database.", req_id)
-            else:
-                for rec in records:
-                    rec.nb_diff =  rec.nb_diff + nb_diff_reported
-
-                cls._dtb.session.commit()
+        return len(records)
 
 
 
@@ -194,9 +175,9 @@ class Database():
             return Diffusion.query.filter_by(fullrequestId=req_id).first().Date
 
     @classmethod
-    def get_external_id(cls, req_id):
+    def get_external_id(cls, req_id, filename):
         with cls.get_app().app_context():
-            return Diffusion.query.filter_by(fullrequestId=req_id).first().diff_externalid
+            return Diffusion.query.filter_by(fullrequestId=req_id, final_file=filename).first().diff_externalid
 
     @classmethod
     def get_id_list_by_filename(cls, filename):
@@ -229,8 +210,7 @@ class Database():
         with cls.get_app().app_context():
             status = cls.get_request_status(req_id)
 
-            records = Diffusion.query.filter(Diffusion.fullrequestId.\
-                      contains(req_id)).all()
+            records = Diffusion.query.filter(Diffusion.fullrequestId ==req_id).all()
 
             if len(records) ==0:
                     message = ("No corresponding request id in database "
@@ -275,10 +255,9 @@ class Diffusion(DTB.Model):
 
     status_values = (REQ_STATUS.ongoing, REQ_STATUS.failed, REQ_STATUS.succeeded)
 
-    primary_key = DTB.Column(DTB.String(
-        RANDOM_ID_LENGTH), nullable=False, primary_key=True)
+
     diff_externalid = DTB.Column(DTB.String(
-        RANDOM_ID_LENGTH), nullable=False)
+        RANDOM_ID_LENGTH), nullable=False, primary_key=True)
     fullrequestId = DTB.Column(DTB.String, nullable=False)
     original_file = DTB.Column(DTB.String)
     final_file = DTB.Column(DTB.String)
@@ -286,11 +265,9 @@ class Diffusion(DTB.Model):
     message = DTB.Column(DTB.String)
     Date = DTB.Column(DTB.DateTime, nullable=False)
     rxnotif = DTB.Column(DTB.Boolean, nullable=False)
-    nb_diff = DTB.Column(DTB.Integer)
 
     def __repr__(self):
-        repr_ = ('<Diffusion(primary_key={primary_key}, '
-                 'diff_externalid={diff_externalid}, '
+        repr_ = ('<Diffusion(diff_externalid={diff_externalid}, '
                  'fullrequestId={fullrequestId}, '
                  'original_file={original_file}, '
                  'final_file={final_file}, '
@@ -298,7 +275,6 @@ class Diffusion(DTB.Model):
                  'message={message}, '
                  'Date={Date}, '
                  'rxnotif={rxnotif}, '
-                 'nb_diff={nb_diff}, '
                  ')>'.format(**self.__dict__))
 
         return repr_

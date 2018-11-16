@@ -153,9 +153,15 @@ loggers:
         handlers: [server_file_handler, info_file_handler, error_file_handler, all_handler]
         propagate: no
 
+    utils.database:
+        level: DEBUG
+        handlers: [server_file_handler, info_file_handler, error_file_handler, all_handler,
+                   manager_file_handler, sender_file_handler, ack_file_handler]
+        propagate: no
+
     paramiko.transport:
         level: INFO
-        handlers: [manager_file_handler, connections_handler, all_handler]
+        handlers: [manager_file_handler, connections_handler]
         propagate: no
 
 root:

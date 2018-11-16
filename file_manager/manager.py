@@ -342,15 +342,13 @@ class ConnectionPointer:
                 database.session.commit()
             # otherwise, we create a new record
             else:
-                diffusion = Diffusion(primary_key = Tools.generate_random_string(),
-                                      diff_externalid=base_record.diff_externalid,
+                diffusion = Diffusion(diff_externalid=Tools.generate_random_string(),
                                       fullrequestId=base_record.fullrequestId,
                                       original_file=filename,
                                       requestStatus=base_record.requestStatus,
                                       message=base_record.message,
                                       Date=base_record.Date,
-                                      rxnotif=base_record.rxnotif,
-                                      nb_diff=base_record.nb_diff)
+                                      rxnotif=base_record.rxnotif)
 
                 database.session.add(diffusion)
                 database.session.commit()
@@ -828,7 +826,7 @@ class DiffMetManager:
             diffusion = etree.SubElement(product,"diffusion")
             instr = self.instructions[req_id]
             diff = instr["diffusion"]
-            etree.SubElement(diffusion,"diffusion_externalid").text = Database.get_external_id(req_id)
+            etree.SubElement(diffusion,"diffusion_externalid").text = Database.get_external_id(req_id, self.new_filename)
             etree.SubElement(diffusion,"archive").text = "0"
 
             self.diff_info_to_xml(diffusion, diff)

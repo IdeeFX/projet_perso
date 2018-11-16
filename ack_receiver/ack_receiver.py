@@ -212,15 +212,9 @@ class AckReceiver:
                 LOGGER.info(msg)
                 cls.update_database_message(msg, req_id, ext_id)
             elif final_status == "success":
-                cls.update_database_status(True, req_id, ext_id)
-                msg = ("DiffMet ack reports success for product %s "
-                       "corresponding to request %s" %
-                       (prod_id,
-                       req_id))
-                LOGGER.info(msg)
-                cls.update_database_message(msg, req_id, ext_id)
+                cls.update_database_status(True, req_id)
             elif final_status == "failure":
-                cls.update_database_status(False, req_id, ext_id)
+                cls.update_database_status(False, req_id)
                 msg = ("DiffMet ack reports error for product %s "
                     "corresponding to request %s with status %s "
                     "for type %s." %
@@ -240,7 +234,7 @@ class AckReceiver:
 
 
     @classmethod
-    def update_database_status(cls, diff_success, diff_id, ext_id):
+    def update_database_status(cls, diff_success, diff_id):
 
         current_status = Database.get_request_status(diff_id)
 
@@ -250,34 +244,28 @@ class AckReceiver:
                       "current status is not %s !" % (diff_id, REQ_STATUS.ongoing))
                 LOGGER.error(msg)
                 Database.update_field_by_query("message", msg,
-                                               **dict(fullrequestId=diff_id,
-                                                      diff_externalid=ext_id))
+                                               **dict(fullrequestId=diff_id))
             else:
                 msg = ("Diffmet reported that diffusion %s failed." % diff_id)
                 LOGGER.info(msg)
                 Database.update_field_by_query("requestStatus", REQ_STATUS.failed,
-                                                **dict(fullrequestId=diff_id,
-                                                       diff_externalid=ext_id))
+                                                **dict(fullrequestId=diff_id))
                 Database.update_field_by_query("message", msg,
-                                            **dict(fullrequestId=diff_id,
-                                                   diff_externalid=ext_id))
+                                            **dict(fullrequestId=diff_id))
         else:
             if current_status != REQ_STATUS.ongoing:
                 msg = ("Difmet reports success for request %s but "
                       "current status is not %s !" % (diff_id, REQ_STATUS.ongoing))
                 LOGGER.error(msg)
                 Database.update_field_by_query("message", msg,
-                                               **dict(fullrequestId=diff_id,
-                                                      diff_externalid=ext_id))
+                                               **dict(fullrequestId=diff_id))
             else:
                 msg = ("Diffmet reported that diffusion %s succeeded." % diff_id)
                 LOGGER.info(msg)
                 Database.update_field_by_query("requestStatus", REQ_STATUS.succeeded,
-                                                **dict(fullrequestId=diff_id,
-                                                       diff_externalid=ext_id))
+                                                **dict(fullrequestId=diff_id))
                 Database.update_field_by_query("message", msg,
-                                            **dict(fullrequestId=diff_id,
-                                                   diff_externalid=ext_id))
+                                            **dict(fullrequestId=diff_id))
 
     @classmethod
     def update_database_message(cls, message, diff_id, ext_id):
@@ -317,7 +305,7 @@ class AckStatus:
         req_id = Database.get_id_by_query(**dtb_key)
         if req_id is None:
             LOGGER.error("Couldn't retrieve dissemination requestId "
-                        "from external_id %s", ext_id)
+                         "from external_id %s", ext_id)
             self.records_number = 0
         else:
             #we fetch the number of records that have to be checked
@@ -336,7 +324,6 @@ class AckStatus:
         for ack_type, status in self.status_to_process:
             if ack_type == "SEND" and status == "OK":
                 final_status = "success"
-                counter+=1
             elif ack_type == "SEND" and status != "OK":
                 final_status= "failure"
                 break
@@ -344,7 +331,7 @@ class AckStatus:
         
         if final_status=="success":
             # we update the number of diffusion reported
-            Database.update_diffusion_number(self.req_id, counter)
+            Database.update_field_by_query("rxnotif", True, **dict(diff_externalid=self.ext_id))
             
             #we check that all requested files have been sent
             nb_diff = Database.get_diffusion_number(self.req_id)

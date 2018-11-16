@@ -101,7 +101,9 @@ class TestSoapInterface(unittest.TestCase):
                                                  fileURI=self.staging_post,
                                                  disseminationInfo=info)
 
-        self.assertEqual(Database.get_request_status("123456"), REQ_STATUS.ongoing)
+        Database.get_id_by_query
+
+        self.assertEqual(Database.get_request_status(Database.get_id_by_query()), REQ_STATUS.ongoing)
 
     def test_json_file(self):
 

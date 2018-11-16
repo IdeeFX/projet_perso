@@ -107,8 +107,9 @@ class DisseminationImplService(ServiceBase):
             client_ip = ctx.transport.req.get("REMOTE_ADDR")
         LOGGER.info("Received monitorDissemination request for requestId %s from ip %s", requestId, client_ip)
         ctx.descriptor.out_message._type_info['disseminationStatus'].Attributes.sub_ns = ""
-
-        status, message = Database.get_diss_status(requestId)
+        host = Notification.get_hostname(client_ip)
+        status, message = Database.get_diss_status(requestId+host)
+        LOGGER.info("Status for for requestId %s is %s", requestId+host, status)
 
         diss_resp = DisseminationStatus(requestId, status, message)
         return diss_resp

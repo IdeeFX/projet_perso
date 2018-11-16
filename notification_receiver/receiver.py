@@ -150,14 +150,12 @@ class Notification():
             # create JSON request file
             self.create_request_file()
 
-            diffusion = Diffusion(primary_key = Tools.generate_random_string(),
-                                  diff_externalid=diff_id,
+            diffusion = Diffusion(diff_externalid=diff_id,
                                   fullrequestId=self.req_id+self.hostname,
                                   requestStatus=REQ_STATUS.ongoing,
                                   Date=self._to_datetime(self.date_reception),
                                   rxnotif=True,
-                                  message="Created record in SQL database",
-                                  nb_diff=0)
+                                  message="Created record in SQL database",)
             with Database.get_app().app_context():
                 database.session.add(diffusion)
                 database.session.commit()
@@ -172,13 +170,11 @@ class Notification():
 
     def commit_failure(self, database, diff_id):
 
-        diffusion = Diffusion(primary_key = Tools.generate_random_string(),
-                              diff_externalid=diff_id,
+        diffusion = Diffusion(diff_externalid=diff_id,
                               fullrequestId=self.req_id,
                               requestStatus=REQ_STATUS.failed,
                               Date=self._to_datetime(self.date_reception),
-                              rxnotif=True,
-                              nb_diff=0)
+                              rxnotif=True)
 
         with Database.get_app().app_context():
             database.session.add(diffusion)
@@ -197,12 +193,14 @@ class Notification():
         # get hostname
         try:
             hostname = socket.gethostbyaddr(client_ip)[0]
+            hostname = hostname.replace(".","-")
             LOGGER.debug("Got hostname {host} for {ip}".format(
                 host=hostname, ip=client_ip))
         except (herror, gaierror):
             LOGGER.exception("Couldn't get hostname from ip %s, "
                              "using ip as hostname instead.", client_ip)
             hostname = client_ip
+            hostname = hostname.replace(".","-")
 
         return hostname
 
