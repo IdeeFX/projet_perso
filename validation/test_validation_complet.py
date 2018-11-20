@@ -94,14 +94,29 @@ class CompleteTest(unittest.TestCase):
                                                 subject= "dummySubject",
                                                 dispatchMode = "TO",
                                                 attachmentMode="AS_ATTACHMENT")
+        
         info = factory.DisseminationInfo(priority=5,SLA=6,dataPolicy="dummyDataPolicy", diffusion=test_diffusion)
 
         
         result1 = client.service.disseminate(requestId="123456", fileURI=self.staging_post, disseminationInfo=info)
         result2 = client.service.disseminate(requestId="654321", fileURI=self.staging_post, disseminationInfo=info)
+        test_diffusion = factory.FTPDiffusion(host="dummyHost",
+                                                   port="dummyPort",
+                                                   user="dummyUser",
+                                                   password="dummyPwd",
+                                                   passive="False",
+                                                   remotePath="dummyPath",
+                                                   checkFileSize="True",
+                                                   encrypted="False")
+
+        info = factory.DisseminationInfo(priority=5,SLA=6,
+                                              dataPolicy="dummyDataPolicy",
+                                              diffusion=test_diffusion)
+        result3 = client.service.disseminate(requestId="111111", fileURI=self.staging_post, disseminationInfo=info)
 
         print(result1)
         print(result2)
+        print(result3)
 
         SoapServer.stop_server()
 
@@ -213,7 +228,11 @@ class CompleteTest(unittest.TestCase):
         print(result)
         SoapServer.stop_server()
 
-        print("fin")
+        error_log = join(self.tmpdir, "harnais/errors.log")
+
+        with open(error_log, "r") as file_:
+            self.assertEqual(file_.read(),"")
+        
 
     def tearDown(self):
         rmtree(self.tmpdir)
