@@ -6,10 +6,15 @@ import os
 from time import gmtime, strftime
 from datetime import datetime
 from settings.settings_manager import SettingsManager
+from distutils.util import strtobool
 from utils.setup_tree import HarnessTree
 from utils.database import Database, Diffusion
 from utils.const import REQ_STATUS, PRIORITIES
 from utils.tools import Tools
+from utils.log_setup import setup_logging
+from utils.setup_tree import HarnessTree
+
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +33,18 @@ class Notification():
         #load settings, if it has not been done
         if not SettingsManager.is_loaded():
             SettingsManager.load_settings()
-            LOGGER.debug("Settings loaded")
+            # initialize LOGGER
+            setup_logging()
+            # setup repertory structure
+            HarnessTree.setup_tree()
+
+        # Setting up database if necessary
+        if Database.get_database() is None:
+            from webservice.server.application import APP
+            Database.initialize_database(APP)
+            LOGGER.debug("Database setup")
+
+
         LOGGER.debug("Created a Notification object with id %s", req_id)
 
     @staticmethod
@@ -37,10 +53,17 @@ class Notification():
         # priority is scaled from 1 (highest) to 4 (lowest)
         # sla is 0 (BRONZE), 1 (SILVER), 2 (GOLD)
 
-        if priority ==1:
+        priority_activated = SettingsManager.get("sla")
+
+        if type(priority_activated) == str:
+            priority_activated = strtobool(priority_activated)
+
+        if priority_activated == False:
+            result = SettingsManager.get("defaultPriority") or PRIORITIES.default
+        elif priority ==1:
             result = PRIORITIES.maximum
         elif priority >=2:
-            default_priority = SettingsManager.get("delfaultPriority") or PRIORITIES.default
+            default_priority = SettingsManager.get("defaultPriority") or PRIORITIES.default
             result = default_priority + priority - 2*sla
             result = max(PRIORITIES.maximum, result)
             result = min(PRIORITIES.minimum, result)
@@ -67,8 +90,6 @@ class Notification():
 
         self.request_file = request_file = os.path.join(out_dir, request_file)
 
-        # TODO add the rest of the openwis info
-        # TODO add sanity check
         request_dump = dict(date=rec_dict["date_reception"],
                             hostname=self.hostname,
                             diffpriority=priority,
@@ -134,14 +155,13 @@ class Notification():
                                   requestStatus=REQ_STATUS.ongoing,
                                   Date=self._to_datetime(self.date_reception),
                                   rxnotif=True,
-                                  message="Created record in SQL database")
+                                  message="Created record in SQL database",)
             with Database.get_app().app_context():
                 database.session.add(diffusion)
                 database.session.commit()
             LOGGER.debug("Committed %s dissemination status "
                          "into database.", REQ_STATUS.ongoing)
             status = REQ_STATUS.ongoing
-        # TODO get rid of general exception
         except Exception as exc:
             LOGGER.exception("Error during notification processing. "
                              "Dissemination failed.")
@@ -173,14 +193,14 @@ class Notification():
         # get hostname
         try:
             hostname = socket.gethostbyaddr(client_ip)[0]
+            hostname = hostname.replace(".","-")
             LOGGER.debug("Got hostname {host} for {ip}".format(
                 host=hostname, ip=client_ip))
         except (herror, gaierror):
             LOGGER.exception("Couldn't get hostname from ip %s, "
                              "using ip as hostname instead.", client_ip)
             hostname = client_ip
-
-        # TODO check hostname length for overflow
+            hostname = hostname.replace(".","-")
 
         return hostname
 

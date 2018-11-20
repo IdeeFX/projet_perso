@@ -67,6 +67,10 @@ class Database():
 
     @classmethod
     def get_app(cls):
+        if not SettingsManager.is_loaded():
+            SettingsManager.load_settings()
+            LOGGER.info("Settings loaded")
+
         if DEBUG:
             gettempdir()
             tempfile.tempdir = None
@@ -91,16 +95,12 @@ class Database():
     @classmethod
     def update_field_by_query(cls, fieldname, value, **kwargs):
 
-        # TODO refresh is only performed for this query. Look into making
-        # it a decorator
         # check if a refresh is necessary
         limit_format = dict(seconds=SettingsManager.get("delAck")*3600)
         limit = timedelta(**limit_format)
         if cls._last_refresh is None or (datetime.now() - cls._last_refresh) > limit:
             cls.refresh(**limit_format)
 
-
-        # records = session.query(Diffusion).filter(Diffusion.fullrequestId = req_id + hostname).all()
         with cls.get_app().app_context():
             records = Diffusion.query.filter_by(**kwargs).all()
 
@@ -113,8 +113,10 @@ class Database():
     @classmethod
     def get_request_status(cls,req_id):
 
+        status = REQ_STATUS.ongoing
+
         with cls.get_app().app_context():
-            records = Diffusion.query.filter(Diffusion.fullrequestId.contains(req_id)).all()
+            records = Diffusion.query.filter_by(**dict(fullrequestId=req_id)).all()
 
         # if list is empty, no records
         if records == []:
@@ -122,14 +124,50 @@ class Database():
                            "Id %s in database.", req_id)
             return REQ_STATUS.failed
 
-        status = records[0].requestStatus
-        #check that all records are the same
-        for rec in records[1:]:
-            if status != rec.requestStatus:
-                LOGGER.error("Records with same fullrequestId have "
-                             "different requestStatus. This should NEVER "
-                             "happen !")
+        status = REQ_STATUS.succeeded
+        all_disseminated = True
+        for rec in records:
+            if rec.requestStatus == REQ_STATUS.failed:
+                status = REQ_STATUS.failed
+                break
+            elif rec.requestStatus == REQ_STATUS.ongoing:
+                status = REQ_STATUS.ongoing
+                all_disseminated = False
+            elif rec.rxnotif == False:
+                all_disseminated = False
+
+        if status != REQ_STATUS.failed and not all_disseminated:
+            status = REQ_STATUS.ongoing
+
         return status
+
+
+    @classmethod
+    def get_records_number(cls,req_id):
+
+        with cls.get_app().app_context():
+            records = Diffusion.query.filter_by(**dict(fullrequestId=req_id)).all()
+
+        # if list is empty, no records
+        if records == []:
+            LOGGER.warning("Requesting status for non existing request "
+                           "Id %s in database.", req_id)
+        
+        return len(records)
+
+
+    @classmethod
+    def get_diffusion_number(cls,req_id):
+        with cls.get_app().app_context():
+            records = Diffusion.query.filter_by(**dict(rxnotif=True, fullrequestId=req_id)).all()
+
+        if records == []:
+            LOGGER.warning("Requesting status for non existing request "
+                           "Id %s in database.", req_id)
+        
+        return len(records)
+
+
 
     @classmethod
     def get_creation_date(cls, req_id):
@@ -137,9 +175,9 @@ class Database():
             return Diffusion.query.filter_by(fullrequestId=req_id).first().Date
 
     @classmethod
-    def get_external_id(cls, req_id):
+    def get_external_id(cls, req_id, filename):
         with cls.get_app().app_context():
-            return Diffusion.query.filter_by(fullrequestId=req_id).first().diff_externalid
+            return Diffusion.query.filter_by(fullrequestId=req_id, final_file=filename).first().diff_externalid
 
     @classmethod
     def get_id_list_by_filename(cls, filename):
@@ -148,7 +186,7 @@ class Database():
             records = Diffusion.query.filter_by(original_file=filename).all()
         id_list = []
         for rec in records:
-            if rec.fullrequestId not in id_list:
+            if rec.fullrequestId not in id_list and rec.requestStatus == REQ_STATUS.ongoing:
                 id_list.append(rec.fullrequestId)
 
         return id_list
@@ -156,8 +194,6 @@ class Database():
     @classmethod
     def get_id_by_query(cls, **kwargs):
 
-        # records = session.query(Diffusion).filter(Diffusion.fullrequestId = req_id + hostname).all()
-        # TODO test if none
         with cls.get_app().app_context():
             record = Diffusion.query.filter_by(**kwargs).first()
         if record is not None:
@@ -174,14 +210,18 @@ class Database():
         with cls.get_app().app_context():
             status = cls.get_request_status(req_id)
 
-            rec= Diffusion.query.filter(Diffusion.fullrequestId.\
-                      contains(req_id)).first()
-            if rec is None:
-                message = ""
-                LOGGER.warning("No corresponding request id in database "
-                               "for request %s", req_id)
+            records = Diffusion.query.filter(Diffusion.fullrequestId ==req_id).all()
+
+            if len(records) ==0:
+                    message = ("No corresponding request id in database "
+                               "for request %s" % req_id)
+                    LOGGER.warning(message)
             else:
-                message = rec.message
+                msg_list = []
+                for rec in records:
+                    msg_list.append(rec.message)
+
+                message = " --- ".join(msg_list)
 
         return status, message
 
@@ -214,6 +254,7 @@ class Database():
 class Diffusion(DTB.Model):
 
     status_values = (REQ_STATUS.ongoing, REQ_STATUS.failed, REQ_STATUS.succeeded)
+
 
     diff_externalid = DTB.Column(DTB.String(
         RANDOM_ID_LENGTH), nullable=False, primary_key=True)

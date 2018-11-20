@@ -14,10 +14,6 @@ except ValueError:
 # initialize LOGGER
 LOGGER = logging.getLogger(__name__)
 
-
-# SettingsManager.load_settings()
-# LOGGER.debug("Settings loaded")
-
 class HarnessTree:
 
     _repertories = dict(temp_dissRequest_A=None,
@@ -47,11 +43,11 @@ class HarnessTree:
                 try:
                     os.makedirs(dir_path, exist_ok=True)
                     LOGGER.debug(
-                        "Repertory {rep} created recursively.".format(rep=dir_path))
-                #TODO clean that up
+                        "Repertory %s created recursively.", dir_path)
+
                 except Exception as msg_error:
                     LOGGER.exception(
-                        "Couldn't create repertory {rep}.".format(rep=dir_path))
+                        "Couldn't create repertory %s.",dir_path)
             return dir_path
 
         if DEBUG:
@@ -83,7 +79,6 @@ class HarnessTree:
         if not os.path.isdir(cls._repertories["dir_ack"]):
             LOGGER.error("Ack repertory %s does "
                          "not exist", dir_ack)
-            # TODO raise
 
         # storing the settings file signature
         cls._checksum = SettingsManager.get_checksum()
@@ -91,6 +86,10 @@ class HarnessTree:
 
     @classmethod
     def get(cls, key):
+        if not SettingsManager.is_loaded():
+            SettingsManager.load_settings()
+            LOGGER.info("Settings loaded")
+
         #check if settings have been modified
         if SettingsManager.get_checksum() != cls._checksum:
             LOGGER.info("Settings have been modified")

@@ -15,7 +15,6 @@ class SoapServer:
         if cls._process is None:
             #check if no other server is running. if so, kill them
             Tools.kill_process("harness_soap_server")
-            # args =["python3", "-m", "webservice.server.application"]
 
             args =["python3", application.__file__]
             my_env = os.environ.copy()

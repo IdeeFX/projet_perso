@@ -1,14 +1,13 @@
 harnais:
-  # Chemin (relatif?) du répertoire des logs
-  # TODO logdir nécessite redémarrage pour être pris en compte
-  logdir: /tmp/harnais/
   # Repertoire principal du harnais
   dir: /tmp/harnais/
-  # Repertoire de réception des ack
+  # Chemin du répertoire des logs                                                         
+  logdir: /tmp/harnais/logs
+  # Repertoire de réception des ack de difmet
   ackdir: /tmp/ack
   # Synchronisation en seconde entre le serveur
   # actif et passif, si valeur à 0 indique qu’il n’y a pas de serveur passif.
-  synchro:
+  synchro: 0
 openwis:
   # Indique l’ip ou le hostname du serveur Openwis, si « localhost »
   # la récupération des produits se fera via copie locale.
@@ -32,13 +31,12 @@ openwis:
 diss:
   # Ip ou hostname du serveur Difmet
   host: difintg
-  ftpuser: tls_wis_harnais2_intg
+  ftpuser: tls_wis_harnais2_int
   ftppasswd: $dif_harness
   ftpdir: adressed
-  ftpmode:
+  # ftpmode est soit à "active" ou "passive"
+  ftpmode: passive
   ftpport: 21
-# Port soap d’écoute du harnais
-soapport:
 # Temps en seconde d’attente avant le traitement des fichiers de directives temporaires.
 processFileIdle: 30
 # Nombre de fichiers de directives provisoire à traiter
@@ -49,12 +47,12 @@ getSFTPlimitConn: 1
 processFilesize: 1000
 # Durée de conservation des fichiers de directives provisoires (en seconde)
 keepfiletime: 14400
-# Durée de conservation des fichiers de directives provisoires (en seconde)
+# Durée de conservation des fichiers à envoyer à difmet par FTP
 keepfiletimeSender: 86400
 # Nb de fichiers d'instructions in dir_A à partir duquel un warning est envoyé
-ManagerOverflow:
+ManagerOverflow: 100
 # Nb de fichiers d'archives in dir_C à partir duquel un warning est envoyé
-SenderOverflow:
+SenderOverflow: 100
 # Bande passante (mbits) estimée, permettant la gestion du timeout
 bandwidth:
 # Expression régulière à appliquer aux fichiers tmp.zip
@@ -74,16 +72,19 @@ fileregex3:
 # Si true on calcule la priorité sinon on utilisera la valeur 85 par défaut
 sla: False
 # Durée de rétention (en heure) des acquittements dans la « table » d’acquittements.
-delAck:
+delAck: 24
 # Valeur par defaut de priorité à appliquer à une diffusion
-delfaultpriority: 85
+defaultpriority: 85
 # Element de nommage du fichier de diffusion vers Difmet
-diffFileName:
-# Date de fin de vie d’un fichier en minute par rapport à l’heure système
-# pour le champ
-fileendlive:
+diffFileName: fr-meteo-harnaisdiss
+# Durée de fin de vie d’un fichier en minute par rapport à l’heure système
+# pour le champ "end_to_live_date"
+fileendlive: 1440
 # Temps en seconde d’attente avant le traitement des archives difmet à expédier
-sendFTPIdle:
+sendFTPIdle: 10
 # Nombre de transferts FTP concurrentiels
 sendFTPlimitConn: 4
-#
+# Temps en seconde d’attente avant le traitement des réceptions ack
+ackProcessIdle: 10
+# Nom de la pièce jointe quand le fichier est envoyé par mail :
+attachmentName: "MeteoFrance_product"

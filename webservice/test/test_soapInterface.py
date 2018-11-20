@@ -35,8 +35,8 @@ class TestSoapInterface(unittest.TestCase):
 
 
         with open(os.environ[ENV.settings], "w") as file_:
-            yaml.dump(SettingsManager._parameters, file_)
-
+            yaml.dump(dict(SettingsManager._parameters), file_)
+        SettingsManager.reset()
         SoapServer.create_server()
         self.hostname = hostname = socket.gethostname()
         port = os.environ.get(ENV.port) or PORT
@@ -101,7 +101,9 @@ class TestSoapInterface(unittest.TestCase):
                                                  fileURI=self.staging_post,
                                                  disseminationInfo=info)
 
-        self.assertEqual(Database.get_request_status("123456"), REQ_STATUS.ongoing)
+        Database.get_id_by_query
+
+        self.assertEqual(Database.get_request_status(Database.get_id_by_query()), REQ_STATUS.ongoing)
 
     def test_json_file(self):
 

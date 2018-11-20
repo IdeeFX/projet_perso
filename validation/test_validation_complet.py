@@ -23,12 +23,9 @@ from multiprocessing.dummy import Pool as ThreadPool
 from webservice.server.application import APP
 from utils.const import PORT, ENV
 from utils.tools import Tools
-from utils.database import Database
+from utils.database import Database, Diffusion
 from utils.log_setup import setup_logging
 
-        # os.environ[ENV.debug] = "False"
-        # # DebugSettingsManager.sftp_pool = Pool
-        # # DebugSettingsManager.ftp_pool = Pool
 
 class CompleteTest(unittest.TestCase):
 
@@ -49,7 +46,7 @@ class CompleteTest(unittest.TestCase):
         os.mkdir(self.ack_dir)
 
         # create files on staging post
-        for i in range(10):
+        for i in range(2):
             with open(join(self.staging_post,"A_SNFR30LFPW270700_C_LFPW_20180927070000_%i.txt" % i),"w") as file_out:
                 file_out.write("Dummy staging post test file")
 
@@ -83,11 +80,11 @@ class CompleteTest(unittest.TestCase):
         os.environ[ENV.settings] = join(self.tmpdir, "settings_testing.yaml")
 
         with open(os.environ[ENV.settings], "w") as file_:
-            yaml.dump(SettingsManager._parameters, file_)
-
-        setup_logging()
+            yaml.dump(dict(SettingsManager._parameters), file_)
+        SettingsManager.reset()
 
     def test_complet(self):
+        SettingsManager.load_settings()
         SoapServer.create_server()
         client = Client(os.environ[ENV.soap_url])
         factory = client.type_factory('http://dissemination.harness.openwis.org/')
@@ -99,6 +96,7 @@ class CompleteTest(unittest.TestCase):
                                                 attachmentMode="AS_ATTACHMENT")
         info = factory.DisseminationInfo(priority=5,SLA=6,dataPolicy="dummyDataPolicy", diffusion=test_diffusion)
 
+        
         result1 = client.service.disseminate(requestId="123456", fileURI=self.staging_post, disseminationInfo=info)
         result2 = client.service.disseminate(requestId="654321", fileURI=self.staging_post, disseminationInfo=info)
 
@@ -111,7 +109,6 @@ class CompleteTest(unittest.TestCase):
         SettingsManager.update(dict(openwisStagingPath=gettempdir(),
                                     openwisHost="localhost",
                                     openwisSftpUser="admin",
-                                    # openwisSftpUser="openwis",
                                     openwisSftpPassword="admin",
                                     openwisSftpPort = 3373
                                     ),
@@ -140,16 +137,13 @@ class CompleteTest(unittest.TestCase):
         except KeyboardInterrupt:
             FTPserver.stop_server()
 
-        try:
-            req_id1 = "123456" + self.hostname
-            req_id2 = "654321" + self.hostname
-            ext_id1=Database.get_external_id("123456" + self.hostname)
-            ext_id2=Database.get_external_id("654321" + self.hostname)
-        except AttributeError:
-            req_id1 = "123456" + "localhost"
-            req_id2 = "654321" + "localhost"
-            ext_id1=Database.get_external_id("123456" + "localhost")
-            ext_id2=Database.get_external_id("654321" + "localhost")
+        with Database.get_app().app_context():
+            records = Diffusion.query.filter(Diffusion.fullrequestId.contains("123456")).all()
+        print(records[0].fullrequestId)
+        ext_id1 = records[0].diff_externalid
+        ext_id2 = records[1].diff_externalid
+
+
 
         with open(join(self.ack_dir, "ack_file.acqdifmet.xml"),"w") as file_:
             file_.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
@@ -158,7 +152,7 @@ class CompleteTest(unittest.TestCase):
                             "<date>2018-10-01T12:31:46Z</date>\n"
                             "<type>RECEIVED</type>\n"
                             "<status>OK</status>\n"
-                            "<productid>fr-met,SNFR30LFPW011000LFPW,00001-wiss,20181001100000</productid>\n"
+                            "<productid>fr-met,SNFR30LFPW011000LFPW,00000-wiss,20181001100000</productid>\n"
                             "<product_internalid>66180_20181001123146</product_internalid>\n"
                             "<send2>0</send2>\n"
                             "<diffusion_externalid>{ext_id1}</diffusion_externalid>\n"
@@ -175,6 +169,22 @@ class CompleteTest(unittest.TestCase):
                             "<productid>fr-met,SNFR30LFPW011000LFPW,00001-wiss,20181001100000</productid>\n"
                             "<product_internalid>66180_20181001123146</product_internalid>\n"
                             "<send2>0</send2>\n"
+                            "<diffusion_externalid>{ext_id2}</diffusion_externalid>\n"
+                            "<diffusion_internalid>66181_20181001123146</diffusion_internalid>\n"
+                            "<channel>EMAIL</channel>\n"
+                            "<media>EMAIL</media>\n"
+                            "<use_standby>0</use_standby>\n"
+                            "<try_number>1</try_number>\n"
+                            "<email_adress>yves.goupil@meteo.fr</email_adress>\n"
+                            "<comment>nom de fichier en attachement au courriel: machin</comment>\n"
+                        "</acquittement>\n"
+                        "<acquittement>\n"
+                            "<date>2018-10-01T12:31:46Z</date>\n"
+                            "<type>SEND</type>\n"
+                            "<status>OK</status>\n"
+                            "<productid>fr-met,SNFR30LFPW011000LFPW,00000-wiss,20181001100000</productid>\n"
+                            "<product_internalid>66180_20181001123146</product_internalid>\n"
+                            "<send2>0</send2>\n"
                             "<diffusion_externalid>{ext_id1}</diffusion_externalid>\n"
                             "<diffusion_internalid>66181_20181001123146</diffusion_internalid>\n"
                             "<channel>EMAIL</channel>\n"
@@ -184,8 +194,8 @@ class CompleteTest(unittest.TestCase):
                             "<email_adress>yves.goupil@meteo.fr</email_adress>\n"
                             "<comment>nom de fichier en attachement au courriel: machin</comment>\n"
                         "</acquittement>\n"
-                        "<acquittementnumber>2</acquittementnumber>\n"
-                        "</acquittements>".format(ext_id1=ext_id1))
+                        "<acquittementnumber>3</acquittementnumber>\n"
+                        "</acquittements>".format(ext_id1=ext_id1, ext_id2=ext_id2))
 
         thr = Thread(target=AckReceiver.process, kwargs={"max_loops":2})
 
@@ -197,9 +207,9 @@ class CompleteTest(unittest.TestCase):
         SoapServer.create_server()
         client = Client(os.environ[ENV.soap_url])
         factory = client.type_factory('http://dissemination.harness.openwis.org/')
-        result = client.service.monitorDissemination(requestId=req_id1)
+        result = client.service.monitorDissemination(requestId="123456")
         print(result)
-        result = client.service.monitorDissemination(requestId=req_id2)
+        result = client.service.monitorDissemination(requestId="654321")
         print(result)
         SoapServer.stop_server()
 
