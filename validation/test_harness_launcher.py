@@ -72,7 +72,7 @@ class CompleteTest(unittest.TestCase):
         launcher.start()
         launcher.join(10)
         launcher.terminate()
-        error_log = join(self.tmpdir, "errors.log")
+        error_log = join(self.tmpdir, "harnais/errors.log")
 
         with open(error_log, "r") as file_:
             self.assertEqual(file_.read(),"")

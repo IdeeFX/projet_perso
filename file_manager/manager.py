@@ -353,6 +353,15 @@ class ConnectionPointer:
                 database.session.add(diffusion)
                 database.session.commit()
 
+    @staticmethod
+    def check_zip(item, destination_dir):
+        if item == "tmp.zip":
+            ext = "." + Tools.generate_random_string(5)
+            destination_path = os.path.join(destination_dir, item + ext)
+        else:
+            destination_path = os.path.join(destination_dir, item)
+        return destination_path
+
     def fetch(self, file_uri):
 
         fetch_ok = False
@@ -370,14 +379,14 @@ class ConnectionPointer:
                 # folders are ignored
                 if os.path.isdir(file_path):
                     continue
-                destination_path = os.path.join(destination_dir, item)
+                destination_path = self.check_zip(item, destination_dir)
                 # if the file has already been fetched by a previous instruction file,
                 # we don't do it again
                 if not os.path.isfile(destination_path):
                     LOGGER.debug("Copying file from %s to %s.",
                                   file_path, destination_path)
                     shutil.copy(file_path, destination_path)
-                self.update_filename(item)
+                self.update_filename(os.path.basename(destination_path))
                 files_fetched.append(destination_path)
             fetch_ok = True
         elif self.hostname == "localhost" and \
@@ -445,9 +454,7 @@ class ConnectionPointer:
                              file_path
                              )
 
-                if item == "tmp.zip":
-                    ext = "." + Tools.generate_random_string(5)
-                    destination_path = os.path.join(destination_dir, item + ext)
+                destination_path = self.check_zip(item, destination_dir)
 
                 files_to_sftp.append((dir_path, file_path, destination_path, False))
 
@@ -770,7 +777,7 @@ class DiffMetManager:
             etree.SubElement(element, prefix + "ftp_passive").text = bin_bool(diff_info["passive"])
             etree.SubElement(element, prefix + "ftp_port").text = self._get_port_value(diff_info)
             etree.SubElement(element, prefix + "ftp_tmp_method").text = "NAME"
-            if diff_info["fileName"] != "":
+            if diff_info["fileName"] not in [None, ""]:
                 etree.SubElement(element, prefix + "ftp_final_file_name").text = Tools.ack_str(diff_info["fileName"])
                 etree.SubElement(element, prefix + "ftp_tmp_file_name").text = Tools.ack_str(diff_info["fileName"]+ ".tmp")
             elif re.match(r"^tmp\.zip", self.original_filename) is not None:
@@ -786,7 +793,7 @@ class DiffMetManager:
             etree.SubElement(element, prefix + "email_to_cc").text = Tools.ack_str(diff_info["dispatchMode"])
             etree.SubElement(element, prefix + "email_subject").text = Tools.ack_str(diff_info["subject"])
             etree.SubElement(element, prefix + "email_text_in_body").text = "0"
-            if diff_info["fileName"] != "":
+            if diff_info["fileName"] not in [None, ""]:
                 etree.SubElement(element, prefix + "email_attached_file_name").text = Tools.ack_str(diff_info["fileName"])
             else:
                 etree.SubElement(element, prefix + "email_attached_file_name").text = Tools.ack_str(SettingsManager.get("attachmentName"))

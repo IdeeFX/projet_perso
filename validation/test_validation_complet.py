@@ -235,7 +235,7 @@ class CompleteTest(unittest.TestCase):
         
 
     def tearDown(self):
-        rmtree(self.tmpdir)
+        # rmtree(self.tmpdir)
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
         tempfile.tempdir = None
