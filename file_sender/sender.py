@@ -25,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.debug("Logging configuration set up for %s", __name__)
 
 try:
-    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
+    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or DebugSettingsManager.get("debug")))
 except ValueError:
     DEBUG = False
 

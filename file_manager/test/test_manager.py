@@ -1,30 +1,30 @@
 import unittest
 import socket
 import os
-from os.path import join
+from os.path import join, isfile
 import json
 import yaml
 from utils.const import ENV, REQ_STATUS
+from re import match
 from datetime import datetime
 from zeep import Client
 import tempfile
 from tempfile import mkdtemp, gettempdir
 import tempfile
-from settings.settings_manager import SettingsManager
+from settings.settings_manager import SettingsManager, DebugSettingsManager
 from validation.mock_server.openwis_sftp import SFTPserver
 from shutil import rmtree
-from os.path import join
 from utils.const import REQ_STATUS
 from utils.database import Database, Diffusion
 from utils.setup_tree import HarnessTree
 from utils.tools import Tools
 from utils.log_setup import setup_logging
-from file_manager.manager import FileManager
 
-class TestFileManager(unittest.TestCase):
+class TestFileManager_SFTP(unittest.TestCase):
 
     def setUp(self):
 
+        DebugSettingsManager.test_sftp = "True"
         self.tmpdir  = mkdtemp(prefix='harnais_')
         os.environ["TMPDIR"] = self.tmpdir
         self.staging_post = join(self.tmpdir, "staging_post")
@@ -47,10 +47,6 @@ class TestFileManager(unittest.TestCase):
             yaml.dump(SettingsManager._parameters, file_)
 
         setup_logging()
-
-        for i in range(10):
-            with open(join(self.staging_post,"A_SNFR30LFPW270700_C_LFPW_20180927070000_%i.txt" % i),"w") as file_out:
-                file_out.write("Dummy staging post test file")
 
         SFTPserver.create_server(self.staging_post)
 
@@ -88,10 +84,53 @@ class TestFileManager(unittest.TestCase):
 
     def test_download_staging_post(self):
 
-        # FileManager.process_instruction_file(self.json_file)
+        from file_manager.manager import FileManager
 
-        print("ok")
+        files_list = []
+        for i in range(4):
+            filename = "A_SNFR30LFPW270700_C_LFPW_20180927070000_%i.txt" % i
+            files_list.append(filename)
+            with open(join(self.staging_post,filename),"w") as file_out:
+                file_out.write("Dummy staging post test file")
 
+        FileManager.process_instruction_file(self.json_file)
+
+        dir_b = HarnessTree.get("temp_dissRequest_B")
+
+        for filename in files_list:
+            self.assertTrue(os.path.isfile(join(dir_b, filename)))
+
+
+
+
+    def test_download_staging_post_zip(self):
+
+        from file_manager.manager import FileManager
+
+        with open(join(self.staging_post,"tmp.zip"),"w") as file_out:
+            file_out.write("Dummy staging post test file")
+
+        FileManager.dir_b = HarnessTree.get("temp_dissRequest_B")
+        FileManager.dir_c = HarnessTree.get("temp_dissRequest_C")
+        diss_instructions = dict()
+        all_files_fetched = []
+        process_ok, instructions, files_fetched = FileManager.process_instruction_file(self.json_file)
+
+        if process_ok:
+            req_id = instructions["req_id"]
+            hostname = instructions["hostname"]
+            diss_instructions[req_id+hostname] = instructions
+            all_files_fetched += [item for item in files_fetched if
+                                    item not in all_files_fetched]
+
+        FileManager.package_data(all_files_fetched, diss_instructions)
+        dir_c_list = os.listdir(FileManager.dir_c)
+        self.assertTrue(len(dir_c_list)>0)
+        if len(dir_c_list)>0:
+            file_packaged = dir_c_list[0]
+            self.assertTrue(match('fr-meteo-harnaisdiss,00000,,\d+.tar.gz', file_packaged) is not None) 
+
+        
 
 
     def tearDown(self):
@@ -102,6 +141,7 @@ class TestFileManager(unittest.TestCase):
         tempfile.tempdir = None
         Database.reset()
         SettingsManager.reset()
+        DebugSettingsManager.reset()
 
 
 

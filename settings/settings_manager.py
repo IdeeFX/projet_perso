@@ -130,8 +130,17 @@ class DebugSettingsManager:
 
     sftp_pool = ThreadPool
     ftp_pool = ThreadPool
+    debug = "False"
+    test_sftp = "False"
 
     @classmethod
     def reset(cls):
         cls.sftp_pool = ThreadPool
         cls.ftp_pool = ThreadPool
+        cls.debug = "False"
+        cls.test_sftp = "False"
+
+    @classmethod
+    def get(cls, attr):
+
+        return getattr(cls, attr)
