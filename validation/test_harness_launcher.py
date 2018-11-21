@@ -11,6 +11,7 @@ from utils.log_setup import setup_logging
 import yaml
 from utils.database import Database
 from utils.const import PORT, ENV
+from utils.tools import Tools
 from multiprocessing import Process
 from shutil import rmtree
 import logging
@@ -81,7 +82,9 @@ class CompleteTest(unittest.TestCase):
 
 
     def tearDown(self):
-        rmtree(self.tmpdir)
+        cleared = Tools.move_dir_to_trash_can(self.tmpdir)
+        if not cleared:
+            rmtree(self.tmpdir)
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
         tempfile.tempdir = None

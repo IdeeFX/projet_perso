@@ -19,12 +19,15 @@ from utils.database import Database, Diffusion
 from utils.setup_tree import HarnessTree
 from utils.tools import Tools
 from utils.log_setup import setup_logging
+from file_manager.manager import FileManager
+import file_manager.manager
 
 class TestFileManager_local(unittest.TestCase):
 
     def setUp(self):
 
-        DebugSettingsManager.test_sftp = "False"
+        # DebugSettingsManager.test_sftp = "False"
+        file_manager.manager.TEST_SFTP = False
         self.tmpdir  = mkdtemp(prefix='harnais_')
         os.environ["TMPDIR"] = self.tmpdir
         self.staging_post = join(self.tmpdir, "staging_post")
@@ -84,7 +87,7 @@ class TestFileManager_local(unittest.TestCase):
 
     def test_download_staging_post(self):
 
-        from file_manager.manager import FileManager
+        self.assertFalse(file_manager.manager.TEST_SFTP)
 
         files_list = []
         for i in range(4):
@@ -105,8 +108,8 @@ class TestFileManager_local(unittest.TestCase):
 
     def test_download_staging_post_zip(self):
 
-        from file_manager.manager import FileManager
-
+        self.assertFalse(file_manager.manager.TEST_SFTP)
+        
         with open(join(self.staging_post,"tmp.zip"),"w") as file_out:
             file_out.write("Dummy staging post test file")
 
@@ -134,7 +137,9 @@ class TestFileManager_local(unittest.TestCase):
 
 
     def tearDown(self):
-        rmtree(self.tmpdir)
+        cleared = Tools.move_dir_to_trash_can(self.tmpdir)
+        if not cleared:
+            rmtree(self.tmpdir)
         SFTPserver.stop_server()
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")

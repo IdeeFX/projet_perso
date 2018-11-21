@@ -20,7 +20,7 @@ from utils.const import ENV
 # a thread implementation to follow more easily the overall process
 # in a debugger.
 try:
-    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or DebugSettingsManager.get("debug")))
+    DEBUG = strtobool(os.environ.get(ENV.debug) or DebugSettingsManager.get("debug"))
 except ValueError:
     DEBUG = False
 

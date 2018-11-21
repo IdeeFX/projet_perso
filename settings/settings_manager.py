@@ -63,7 +63,7 @@ class SettingsManager:
                     if set_key.lower() == key.lower() and value is not None:
                         cls._parameters[key] = value
 
-
+            cls._parameters = dict(cls._parameters)
             cls._loaded = loaded = True
             cls._checksum = checksum
 

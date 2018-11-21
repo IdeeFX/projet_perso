@@ -31,7 +31,7 @@ class CompleteTest(unittest.TestCase):
 
     def setUp(self):
 
-        DebugSettingsManager.debug = "True"
+        DebugSettingsManager.debug = "False"
         DebugSettingsManager.test_sftp = "True"
         self.tmpdir  = mkdtemp(prefix='harnais_')
         harnais_dir = join(self.tmpdir, "harnais")
@@ -235,7 +235,9 @@ class CompleteTest(unittest.TestCase):
         
 
     def tearDown(self):
-        # rmtree(self.tmpdir)
+        cleared = Tools.move_dir_to_trash_can(self.tmpdir)
+        if not cleared:
+            rmtree(self.tmpdir)
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
         tempfile.tempdir = None

@@ -25,7 +25,7 @@ LOGGER_ACK = logging.getLogger("difmet_ack_messages")
 LOGGER_ALARM =   logging.getLogger("difmet_alarm_messages")
 LOGGER.debug("Logging configuration set up for %s", __name__)
 try:
-    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or DebugSettingsManager.get("debug")))
+    DEBUG = strtobool(os.environ.get(ENV.debug) or DebugSettingsManager.get("debug"))
 except ValueError:
     DEBUG = False
 

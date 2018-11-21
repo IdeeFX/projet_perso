@@ -14,6 +14,7 @@ from shutil import rmtree
 from os.path import join
 from utils.database import Database
 from utils.setup_tree import HarnessTree
+from utils.tools import Tools
 
 class TestSoapInterface(unittest.TestCase):
 
@@ -146,7 +147,9 @@ class TestSoapInterface(unittest.TestCase):
         self.assertTrue(test)
 
     def tearDown(self):
-        rmtree(self.tmpdir)
+        cleared = Tools.move_dir_to_trash_can(self.tmpdir)
+        if not cleared:
+            rmtree(self.tmpdir)
         SoapServer.stop_server()
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
