@@ -94,6 +94,26 @@ class Tools:
             for file_ in os.listdir(rep):
                 os.remove(os.path.join(rep, file_))
 
+    @staticmethod
+    def move_dir_to_trash_can(repertory):
+        cleared = False
+        rep = os.environ.get(ENV.trash)
+        try:
+            is_dir = os.path.isdir(rep)
+        except TypeError:
+            if rep is not None:
+                logger.error("Value of environment variable %s "
+                            "is not a path to a directory.", ENV.trash)
+            is_dir = False
+
+        if is_dir:
+            shutil.move(repertory, rep)
+            cleared = True
+
+        return cleared
+
+
+
 
     @staticmethod
     def ack_str(ack_string):

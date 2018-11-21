@@ -19,15 +19,15 @@ from utils.database import Database, Diffusion
 from utils.setup_tree import HarnessTree
 from utils.tools import Tools
 from utils.log_setup import setup_logging
-from file_manager.manager import FileManager, ConnectionPointer
+from file_manager.manager import FileManager
 import file_manager.manager
 
-class TestFileManager_SFTP(unittest.TestCase):
+class TestFileManager_local(unittest.TestCase):
 
     def setUp(self):
 
-        # DebugSettingsManager.test_sftp = "True"
-        file_manager.manager.TEST_SFTP = True
+        # DebugSettingsManager.test_sftp = "False"
+        file_manager.manager.TEST_SFTP = False
         self.tmpdir  = mkdtemp(prefix='harnais_')
         os.environ["TMPDIR"] = self.tmpdir
         self.staging_post = join(self.tmpdir, "staging_post")
@@ -87,7 +87,7 @@ class TestFileManager_SFTP(unittest.TestCase):
 
     def test_download_staging_post(self):
 
-        self.assertTrue(file_manager.manager.TEST_SFTP)
+        self.assertFalse(file_manager.manager.TEST_SFTP)
 
         files_list = []
         for i in range(4):
@@ -108,8 +108,8 @@ class TestFileManager_SFTP(unittest.TestCase):
 
     def test_download_staging_post_zip(self):
 
-        self.assertTrue(file_manager.manager.TEST_SFTP)
-
+        self.assertFalse(file_manager.manager.TEST_SFTP)
+        
         with open(join(self.staging_post,"tmp.zip"),"w") as file_out:
             file_out.write("Dummy staging post test file")
 
@@ -131,45 +131,9 @@ class TestFileManager_SFTP(unittest.TestCase):
         self.assertTrue(len(dir_c_list)>0)
         if len(dir_c_list)>0:
             file_packaged = dir_c_list[0]
-            self.assertTrue(match('fr-meteo-harnaisdiss,00000,,\d+.tar.gz', file_packaged) is not None) 
+            self.assertTrue(match(r'fr-meteo-harnaisdiss,\d+,,\d+.tar.gz', file_packaged) is not None) 
 
-
-    def test_download_large_file(self):
-
-        self.assertTrue(file_manager.manager.TEST_SFTP)
-
-        SettingsManager.reset()
-        SettingsManager.load_settings()
-        SettingsManager.update(dict(harnaisLogdir=self.tmpdir,
-                                    harnaisDir=self.tmpdir,
-                                    harnaisAckDir=self.tmpdir,
-                                    openwisStagingPath=gettempdir(),
-                                    openwisHost="localhost",
-                                    openwisSftpUser="admin",
-                                    openwisSftpPassword="admin",
-                                    openwisSftpPort = 3373,
-                                    bandwidth=5
-                                   ), testing=True)
-
-
-        with open(os.environ[ENV.settings], "w") as file_:
-            yaml.dump(SettingsManager._parameters, file_)
-
-        files_list = []
-        for i in range(1):
-            filename = "A_largefile_C_LFPW_20180927070000_%i.txt" % i
-            files_list.append(filename)
-            with open(join(self.staging_post,filename),"wb") as file_out:
-                size = 200 * (1<<20)
-                file_out.seek(size-1)
-                file_out.write(b"\0")
-
-        FileManager.process_instruction_file(self.json_file)
-
-        dir_b = HarnessTree.get("temp_dissRequest_B")
-
-        for filename in files_list:
-            self.assertTrue(os.path.isfile(join(dir_b, filename)))
+        
 
 
     def tearDown(self):
@@ -182,48 +146,9 @@ class TestFileManager_SFTP(unittest.TestCase):
         tempfile.tempdir = None
         Database.reset()
         SettingsManager.reset()
-        HarnessTree.reset()
         DebugSettingsManager.reset()
 
-class TestConnectionPointer(unittest.TestCase):
 
-    def setUp(self):
-
-        self.tmpdir  = mkdtemp(prefix='harnais_')
-        os.environ["TMPDIR"] = self.tmpdir
-        self.staging_post = join(self.tmpdir, "staging_post")
-        os.mkdir(self.staging_post)
-        # # prepare settings
-        SettingsManager.load_settings()
-        SettingsManager.update(dict(harnaisLogdir=self.tmpdir,
-                                    harnaisDir=self.tmpdir,
-                                    harnaisAckDir=self.tmpdir,
-                                    bandwidth=5,
-                                    ), testing=True)
-
-        os.environ[ENV.settings] = join(self.tmpdir, "settings_testing.yaml")
-
-        with open(os.environ[ENV.settings], "w") as file_:
-            yaml.dump(SettingsManager._parameters, file_)
-
-        setup_logging()
-
-    def test_compute_timeout(self):
-
-        t = ConnectionPointer.compute_timeout(100000)
-
-        self.assertEqual(t, 0.152587890625)
-
-    def tearDown(self):
-        cleared = Tools.move_dir_to_trash_can(self.tmpdir)
-        if not cleared:
-            rmtree(self.tmpdir)
-        os.environ.pop(ENV.settings)
-        os.environ.pop("TMPDIR")
-        tempfile.tempdir = None
-        Database.reset()
-        SettingsManager.reset()
-        DebugSettingsManager.reset()
 
 if __name__ == "__main__":
     unittest.main()

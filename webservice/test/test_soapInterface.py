@@ -14,6 +14,7 @@ from shutil import rmtree
 from os.path import join
 from utils.database import Database
 from utils.setup_tree import HarnessTree
+from utils.tools import Tools
 
 class TestSoapInterface(unittest.TestCase):
 
@@ -37,13 +38,13 @@ class TestSoapInterface(unittest.TestCase):
         with open(os.environ[ENV.settings], "w") as file_:
             yaml.dump(dict(SettingsManager._parameters), file_)
         SettingsManager.reset()
-        SoapServer.create_server()
         self.hostname = hostname = socket.gethostname()
-        port = os.environ.get(ENV.port) or PORT
-        os.environ[ENV.soap_url] = ('http://{hostname}:{port}/harnais-diss-v2/'
+        self.port = port = os.environ.get(ENV.port) or PORT
+        self.soap_url = ('http://{hostname}:{port}/harnais-diss-v2/'
                                     'webservice/Dissemination?wsdl'.format(hostname=hostname,
                                     port=port))
-        self.client = Client(os.environ[ENV.soap_url])
+        SoapServer.create_server()
+        self.client = Client(self.soap_url)
         self.factory = self.client.type_factory('http://dissemination.harness.openwis.org/')
 
 
@@ -88,6 +89,7 @@ class TestSoapInterface(unittest.TestCase):
 
     def test_database_status(self):
 
+
         test_diffusion = self.factory.MailDiffusion(address="dummy@dummy.com",
                                                    headerLine="dummyHeaderLine",
                                                    subject= "dummySubject",
@@ -100,8 +102,6 @@ class TestSoapInterface(unittest.TestCase):
         result = self.client.service.disseminate(requestId="123456",
                                                  fileURI=self.staging_post,
                                                  disseminationInfo=info)
-
-        Database.get_id_by_query
 
         self.assertEqual(Database.get_request_status(Database.get_id_by_query()), REQ_STATUS.ongoing)
 
@@ -147,7 +147,9 @@ class TestSoapInterface(unittest.TestCase):
         self.assertTrue(test)
 
     def tearDown(self):
-        rmtree(self.tmpdir)
+        cleared = Tools.move_dir_to_trash_can(self.tmpdir)
+        if not cleared:
+            rmtree(self.tmpdir)
         SoapServer.stop_server()
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")

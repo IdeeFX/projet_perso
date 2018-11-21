@@ -63,7 +63,7 @@ class SettingsManager:
                     if set_key.lower() == key.lower() and value is not None:
                         cls._parameters[key] = value
 
-
+            cls._parameters = dict(cls._parameters)
             cls._loaded = loaded = True
             cls._checksum = checksum
 
@@ -130,8 +130,17 @@ class DebugSettingsManager:
 
     sftp_pool = ThreadPool
     ftp_pool = ThreadPool
+    debug = "False"
+    test_sftp = "False"
 
     @classmethod
     def reset(cls):
         cls.sftp_pool = ThreadPool
         cls.ftp_pool = ThreadPool
+        cls.debug = "False"
+        cls.test_sftp = "False"
+
+    @classmethod
+    def get(cls, attr):
+
+        return getattr(cls, attr)

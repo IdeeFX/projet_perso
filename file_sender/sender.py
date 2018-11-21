@@ -11,7 +11,7 @@ from multiprocessing.pool import Pool
 from os import listdir, rename
 from os.path import basename, join, splitext
 from time import sleep, time
-
+from re import match
 from setproctitle import setproctitle
 from settings.settings_manager import DebugSettingsManager, SettingsManager
 from utils.const import DEBUG_TIMEOUT, ENV, TIMEOUT, TIMEOUT_BUFFER
@@ -25,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.debug("Logging configuration set up for %s", __name__)
 
 try:
-    DEBUG = bool(strtobool(os.environ.get(ENV.debug) or "False"))
+    DEBUG = strtobool(os.environ.get(ENV.debug) or DebugSettingsManager.get("debug"))
 except ValueError:
     DEBUG = False
 
@@ -176,7 +176,7 @@ class DifmetSender:
                          timeout, file_)
         else:
             # conversion in Mbits/s with shift_expr << operator
-            timeout = (required_bandwith*1 << 17)/bandwidth*TIMEOUT_BUFFER
+            timeout = (required_bandwith/(1 << 17))/bandwidth*TIMEOUT_BUFFER
             LOGGER.debug("Ftp timeout computed to %s s for file %s.",
                          timeout, file_)
 
@@ -196,6 +196,11 @@ class DifmetSender:
         overflow = SettingsManager.get("SenderOverflow")
 
         list_entries = os.listdir(dirname)
+
+        # don't takes files into account if they end by .tmp
+
+        list_entries = [item for item in list_entries if match(".*\.tmp$", item) is None]
+
         list_entries = [os.path.join(dirname, entry) for entry in list_entries]
         # sort by date
         list_files = [e for e in list_entries if not os.path.isdir(e)]

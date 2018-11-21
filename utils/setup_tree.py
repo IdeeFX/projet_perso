@@ -112,3 +112,12 @@ class HarnessTree:
             LOGGER.warning("HarnessTree class attributes are NOT"
                            " meant to be set outside of tests.")
         cls._repertories.update(in_dict)
+
+    @classmethod
+    def reset(cls):
+        cls._repertories = dict(temp_dissRequest_A=None,
+                        temp_dissRequest_B=None,
+                        temp_dissRequest_C=None,
+                        temp_dissRequest_D=None,
+                        dir_ack=None)
+        cls._checksum = None
