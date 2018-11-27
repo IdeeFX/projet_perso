@@ -17,6 +17,10 @@ from shutil import rmtree
 import logging
 
 class CompleteTest(unittest.TestCase):
+    """
+    This tests check that process starts correctly when
+    calling harness_launcher.py script
+    """
 
     def setUp(self):
 
@@ -67,7 +71,11 @@ class CompleteTest(unittest.TestCase):
 
 
     def test_harness_launch(self):
-
+        """
+        This tests check that process starts correctly when
+        calling harness_launcher.py script. If so,
+        the errors.log file should be empty
+        """
 
         launcher = Process(target=launch)
         launcher.start()

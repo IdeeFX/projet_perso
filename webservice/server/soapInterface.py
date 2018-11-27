@@ -1,3 +1,8 @@
+"""
+    This module defines the spyne object that are used to compile the
+    SOAP WSDL.
+"""
+
 import logging
 import socket
 import os
@@ -79,6 +84,11 @@ class DisseminationInfo(ComplexModel):
 
 
 class DisseminationImplService(ServiceBase):
+    """
+        Defines the two services implemented through the WSDL :
+        - disseminate that process the soap dissemination requests
+        - monitorDissemination that process the soap monitor requests
+    """
 
     __port_types__ = ['DisseminationImplPort']
 

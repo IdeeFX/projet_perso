@@ -1,3 +1,8 @@
+"""
+This module is responsible for creating the json file from a SOAP request
+from the webservice. It also creates the initial database record corresponding
+to the received requestId. 
+"""
 import logging
 import json
 import socket

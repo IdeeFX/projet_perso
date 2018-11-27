@@ -28,9 +28,18 @@ from utils.log_setup import setup_logging
 
 
 class CompleteTest(unittest.TestCase):
+    """
+    This is a full test. The SOAP server receives 3 requests, 2 mails and 1 ftp
+    The manager is then started to process the three json files created by the 
+    previous step
+    When the files are correctly packaed, the sender sends them by FTP
+    to local deposit. Finally, a ack is simulated and ack_receiver
+    processes it.
+    """
 
     def setUp(self):
 
+        # configuring settings and repertories
         DebugSettingsManager.debug = "False"
         DebugSettingsManager.test_sftp = "True"
         self.tmpdir  = mkdtemp(prefix='harnais_')
@@ -50,10 +59,10 @@ class CompleteTest(unittest.TestCase):
                 file_out.write("Dummy staging post test file")
 
 
-
+        # configure soap server
         self.hostname = hostname = socket.gethostname()
         self.port = port = os.environ.get(ENV.port) or PORT
-        self.soap_url = ('http://{hostname}:{port}/harnais-diss-v2/'
+        self.soap_url = os.environ[ENV.soap_url]= ('http://{hostname}:{port}/harnais-diss-v2/'
                          'webservice/Dissemination?wsdl'.format(hostname=hostname,
                          port=port))
 
@@ -84,11 +93,24 @@ class CompleteTest(unittest.TestCase):
         SettingsManager.reset()
 
     def test_complet(self):
+        """
+        This is a full test. The SOAP server receives 3 requests, 2 mails and 1 ftp
+        The manager is then started to process the three json files created by the 
+        previous step
+        When the files are correctly packaed, the sender sends them by FTP
+        to local deposit. Finally, a ack is simulated and ack_receiver
+        processes it.
+        """
+
+
         SettingsManager.load_settings()
+        # start the SOAP server
         SoapServer.create_server()
+        # connect to the WSDL
         client = Client(self.soap_url)
         factory = client.type_factory('http://dissemination.harness.openwis.org/')
 
+        # create a dummy request MailDiffusion
         test_diffusion = factory.MailDiffusion(address="dummy@dummy.com",
                                                 headerLine="dummyHeaderLine",
                                                 subject= "dummySubject",
@@ -97,9 +119,10 @@ class CompleteTest(unittest.TestCase):
         
         info = factory.DisseminationInfo(priority=5,SLA=6,dataPolicy="dummyDataPolicy", diffusion=test_diffusion)
 
-        
+        # send the mail requests
         result1 = client.service.disseminate(requestId="123456", fileURI=self.staging_post, disseminationInfo=info)
         result2 = client.service.disseminate(requestId="654321", fileURI=self.staging_post, disseminationInfo=info)
+        # create a dummy request FTPDiffusion
         test_diffusion = factory.FTPDiffusion(host="dummyHost",
                                                    port="dummyPort",
                                                    user="dummyUser",
@@ -112,46 +135,58 @@ class CompleteTest(unittest.TestCase):
         info = factory.DisseminationInfo(priority=5,SLA=6,
                                               dataPolicy="dummyDataPolicy",
                                               diffusion=test_diffusion)
+        # send the ftp requests
         result3 = client.service.disseminate(requestId="111111", fileURI=self.staging_post, disseminationInfo=info)
 
         print(result1)
         print(result2)
         print(result3)
 
+        #stop the SOAP
         SoapServer.stop_server()
 
+        # create the SFTP server
         SFTPserver.create_server(self.staging_post)
-        SettingsManager.update(dict(openwisStagingPath=gettempdir(),
-                                    openwisHost="localhost",
-                                    openwisSftpUser="admin",
-                                    openwisSftpPassword="admin",
-                                    openwisSftpPort = 3373
-                                    ),
-                                testing=True)
+        # SettingsManager.update(dict(openwisStagingPath=gettempdir(),
+        #                             openwisHost="localhost",
+        #                             openwisSftpUser="admin",
+        #                             openwisSftpPassword="admin",
+        #                             openwisSftpPort = 3373
+        #                             ),
+        #                         testing=True)
+        # Start the manager for 1 loop
         thr = Thread(target=FileManager.process, kwargs={"max_loops":1})
 
         try:
             thr.start()
             thr.join()
+            # STOP sftp server when the FileManager is done
+            # processing
             SFTPserver.stop_server()
             print("Manager finished")
         except KeyboardInterrupt:
             SFTPserver.stop_server()
 
         sleep(10)
-
+        
+        # create the ftp server
         Tools.kill_process("diffmet_test_ftp_server")
         FTPserver.create_server("/")
 
+        # send the files
         thr = Thread(target=DifmetSender.process, kwargs={"max_loops":3})
 
         try:
             thr.start()
             thr.join()
             print("DifMet finished")
+            # STOP sftp server when the DifmetSender is done
+            # processing
+            FTPserver.stop_server()
         except KeyboardInterrupt:
             FTPserver.stop_server()
 
+        # get the diff_external_id in the database required for to simulate an ack 
         with Database.get_app().app_context():
             records = Diffusion.query.filter(Diffusion.fullrequestId.contains("123456")).all()
         print(records[0].fullrequestId)
@@ -159,7 +194,7 @@ class CompleteTest(unittest.TestCase):
         ext_id2 = records[1].diff_externalid
 
 
-
+        #simulate an ack difmet file
         with open(join(self.ack_dir, "ack_file.acqdifmet.xml"),"w") as file_:
             file_.write("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
                         "<acquittements>\n"
@@ -206,12 +241,13 @@ class CompleteTest(unittest.TestCase):
                             "<media>EMAIL</media>\n"
                             "<use_standby>0</use_standby>\n"
                             "<try_number>1</try_number>\n"
-                            "<email_adress>yves.goupil@meteo.fr</email_adress>\n"
+                            "<email_adress>nom.prenoml@meteo.fr</email_adress>\n"
                             "<comment>nom de fichier en attachement au courriel: machin</comment>\n"
                         "</acquittement>\n"
                         "<acquittementnumber>3</acquittementnumber>\n"
                         "</acquittements>".format(ext_id1=ext_id1, ext_id2=ext_id2))
 
+        # start the ack_receiver to process the ack file generated
         thr = Thread(target=AckReceiver.process, kwargs={"max_loops":2})
 
         thr.start()
@@ -230,6 +266,7 @@ class CompleteTest(unittest.TestCase):
 
         error_log = join(self.tmpdir, "harnais/errors.log")
 
+        # if no errors, test is successful.
         with open(error_log, "r") as file_:
             self.assertEqual(file_.read(),"")
         
@@ -240,6 +277,7 @@ class CompleteTest(unittest.TestCase):
             rmtree(self.tmpdir)
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
+        os.environ.pop(ENV.soap_url)
         tempfile.tempdir = None
         Database.reset()
         SettingsManager.reset()

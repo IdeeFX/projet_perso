@@ -1,3 +1,9 @@
+"""
+    This module processes the files in cache/C_tosend by sending it via FTP
+    through n=sendFTPlimitConn process that are occuring independantly and 
+    concurrently. Each FTP upload has its own timeout computed through the bandwidth
+    parameter and the size of the file uploaded
+"""
 import argparse
 import logging
 import multiprocessing
@@ -9,7 +15,7 @@ from ftplib import FTP, error_perm
 from multiprocessing.dummy import Pool as ThreadPool
 from multiprocessing.pool import Pool
 from os import listdir, rename
-from os.path import basename, join, splitext
+from os.path import basename, join, splitext, isfile
 from time import sleep, time
 from re import match
 from setproctitle import setproctitle
@@ -18,7 +24,6 @@ from utils.const import DEBUG_TIMEOUT, ENV, TIMEOUT, TIMEOUT_BUFFER
 from utils.log_setup import setup_logging
 from utils.setup_tree import HarnessTree
 from utils.tools import Tools
-from webservice.server.application import APP
 
 # initialize LOGGER
 LOGGER = logging.getLogger(__name__)
@@ -82,7 +87,7 @@ class DifmetSender:
                 # renaming file to prevent any operation on it.
                 cls.lock_file(file_)
                 res = cls.pool.apply_async(cls.abortable_ftp,
-                                            (cls.upload_file, file_),
+                                            (cls.upload_file, file_, dir_c,dir_d),
                                             dict(timeout=timeout))
 
             cls.check_end_loop(counter, max_loops)
@@ -188,6 +193,7 @@ class DifmetSender:
         LOGGER.info("Received request for %s process to stop looping.",
                      cls.__name__)
         cls._running = False
+        cls.pool.terminate()
 
 
     @classmethod
@@ -258,44 +264,84 @@ class DifmetSender:
 
     @classmethod
     def abortable_ftp(cls, func, *args, **kwargs):
-        timeout = kwargs.get('timeout', None)
-        proc = ThreadPool(1)
 
-        res = proc.apply_async(func, args=args)
-        # size in Mbytes
-        # get file name + ".lock" extension
-        file_ = args[0] + ".lock"
-        size = os.stat(file_).st_size / (1 << 20)
         try:
-            # Wait timeout seconds for func to complete.
-            upload_ok, duration = res.get(timeout)
-            file_ = cls.unlock_file(file_)
-            if not upload_ok:
-                shutil.move(file_, cls.dir_c)
-                LOGGER.debug("Moved file back from repertory %s to repertory %s",
-                            cls.dir_d, cls.dir_c)
+            timeout = kwargs.get('timeout', None)
+            # size in Mbytes
+            # get file name + ".lock" extension
+            original_file, dir_c, dir_d  = args
+            file_ = original_file + ".lock"
+            size = os.stat(file_).st_size / (1 << 20)
+            connection_ok, ftp = cls.connect_ftp()
+            if connection_ok:
+                proc = ThreadPool(1)
+                res = proc.apply_async(func, args=(original_file,ftp,))
+                try:
+                    # Wait timeout seconds for func to complete.
+                    upload_ok, duration = res.get(timeout)
+                    file_ = cls.unlock_file(file_)
+                    if not upload_ok:
+                        shutil.move(file_, dir_c)
+                        LOGGER.debug("Moved file back from repertory %s to repertory %s",
+                                    dir_d, dir_c)
+                    else:
+                        LOGGER.info("File %s of size %f Mo sent to Diffmet in %f s",
+                                    file_, size, duration)
+                        Tools.remove_file(file_, "difmet archive", LOGGER)
+                    ftp.quit()
+                except multiprocessing.TimeoutError:
+                    proc.terminate()
+                    
+                    LOGGER.error("Timeout of %f s exceeded for sending file %s"
+                                " on difmet. Checking upload.", timeout, original_file)
+                    upload_ok = cls.check_transfer(basename(original_file), ftp)
+                    if upload_ok:
+                        LOGGER.warning("Process hit the timeout but "
+                                    "file %s of size %f Mo was still sent to Diffmet",
+                                    file_, size)
+                        Tools.remove_file(file_, "difmet archive", LOGGER)
+                    else:
+                        file_ = cls.unlock_file(file_)
+                        LOGGER.error("FTP upload of %s s failed.", file_)
+                        # move the file back from D to C
+                        shutil.move(file_, dir_c)
+                        LOGGER.debug("Moved file back from repertory %s to repertory %s",
+                                    dir_d, dir_c)
+                except Exception as exc:
+                    file_ = cls.unlock_file(file_)
+                    trace = ''.join(traceback.format_exception(type(exc),
+                                    exc, exc.__traceback__))
+                    LOGGER.error("Error when uploading file %s with "
+                                "trace :\n %s", file_, trace)
+                    ftp.quit()
             else:
-                LOGGER.info("File %s of size %f Mo sent to Diffmet in %f s",
-                             file_, size, duration)
-                Tools.remove_file(file_, "difmet archive", LOGGER)
-        except multiprocessing.TimeoutError:
-            file_ = cls.unlock_file(file_)
-            LOGGER.error("Timeout of %f s exceeded for sending file %s"
-                         " on staging post.", file_, timeout)
-            # move the file back from D to C
-            shutil.move(file_, cls.dir_c)
-            LOGGER.debug("Moved file back from repertory %s to repertory %s",
-                         cls.dir_d, cls.dir_c)
+                file_ = cls.unlock_file(file_)
+                LOGGER.error("Couldn't connect to FTP for uploading file %s ", file_)
+                # move the file back from D to C
+                shutil.move(file_, dir_c)
+                LOGGER.debug("Moved file back from repertory %s to repertory %s",
+                            dir_d, dir_c)
+            
+            proc.terminate()
         except Exception as exc:
-            cls.unlock_file(file_)
             trace = ''.join(traceback.format_exception(type(exc),
                             exc, exc.__traceback__))
             LOGGER.error("Error when uploading file %s with "
-                         "trace :\n %s", args[0], trace)
+                        "trace :\n %s", file_, trace)
 
-            LOGGER.error()
+    @classmethod
+    def check_transfer(cls, filename, ftp):
 
-        proc.terminate()
+        ftpdir = SettingsManager.get("dissFtpDir")
+        ftp.cwd(ftpdir)
+        #  check if file exists on remote server
+        if filename in [name for name, data in list(ftp.mlsd())]:
+            upload_ok = True
+        else:
+            upload_ok = False
+        ftp.quit()
+
+        return upload_ok
 
     @staticmethod
     def unlock_file(file_):
@@ -309,23 +355,19 @@ class DifmetSender:
         rename(file_, file_ + ".lock")
 
     @classmethod
-    def upload_file(cls, file_):
+    def upload_file(cls, file_,ftp):
+        upload_ok =False
         start = time()
-        connection_ok, ftp = cls.connect_ftp()
         file_locked = file_ + ".lock"
         with open(file_locked, 'rb') as file_transfered:
-            if connection_ok:
-                ftpdir = SettingsManager.get("dissFtpDir")
-                ftp.cwd(ftpdir)
-                # renaming in tmp
-                file_renamed = basename(file_) + ".tmp"
-                ftp.storbinary('STOR ' + file_renamed, file_transfered)
-                ftp.rename(file_renamed, basename(file_))
+            ftpdir = SettingsManager.get("dissFtpDir")
+            ftp.cwd(ftpdir)
+            # renaming in tmp
+            file_renamed = basename(file_) + ".tmp"
+            ftp.storbinary('STOR ' + file_renamed, file_transfered)
+            ftp.rename(file_renamed, basename(file_))
 
-                upload_ok = True
-                ftp.quit()
-            else:
-                upload_ok = False
+            upload_ok = True
 
         return upload_ok, time() - start
 

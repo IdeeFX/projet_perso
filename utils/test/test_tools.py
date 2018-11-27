@@ -3,6 +3,9 @@ from utils.tools import Tools
 
 
 class TestTools(unittest.TestCase):
+    """
+    Testing that special characters conversion works properly
+    """
 
     def test_string_conversion(self):
 

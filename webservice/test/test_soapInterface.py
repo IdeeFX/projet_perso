@@ -18,9 +18,14 @@ from utils.tools import Tools
 
 class TestSoapInterface(unittest.TestCase):
 
+    """
+    Test the SOAP interface by sending SOAP requests and checking that json
+    files and database are correctly set up
+    """
+
     def setUp(self):
 
-
+        # create repertories and configure harnesss
         self.tmpdir  = mkdtemp(prefix='harnais_')
         os.environ["TMPDIR"] = self.tmpdir
         self.staging_post = join(self.tmpdir, "staging_post")
@@ -38,17 +43,23 @@ class TestSoapInterface(unittest.TestCase):
         with open(os.environ[ENV.settings], "w") as file_:
             yaml.dump(dict(SettingsManager._parameters), file_)
         SettingsManager.reset()
+        # configure SOAP server
         self.hostname = hostname = socket.gethostname()
         self.port = port = os.environ.get(ENV.port) or PORT
-        self.soap_url = ('http://{hostname}:{port}/harnais-diss-v2/'
+        self.soap_url = os.environ[ENV.soap_url]= ('http://{hostname}:{port}/harnais-diss-v2/'
                                     'webservice/Dissemination?wsdl'.format(hostname=hostname,
                                     port=port))
         SoapServer.create_server()
+        # connect to soap WSDL
         self.client = Client(self.soap_url)
         self.factory = self.client.type_factory('http://dissemination.harness.openwis.org/')
 
 
     def test_notification_mail(self):
+        """
+        This tests check that the SOAP server interprets the client soap request correctly
+        when the request is a mail diffusion
+        """
 
         test_diffusion = self.factory.MailDiffusion(address="dummy@dummy.com",
                                                    headerLine="dummyHeaderLine",
@@ -67,6 +78,10 @@ class TestSoapInterface(unittest.TestCase):
         self.assertEqual(result.message, 'dissemination request received')
 
     def test_notification_ftp(self):
+        """
+        This tests check that the SOAP server interprets the client soap request correctly
+        when the request is a ftp diffusion
+        """
 
         test_diffusion = self.factory.FTPDiffusion(host="dummyHost",
                                                    port="dummyPort",
@@ -88,6 +103,10 @@ class TestSoapInterface(unittest.TestCase):
         self.assertEqual(result.message, 'dissemination request received')
 
     def test_database_status(self):
+        """
+        This tests check that the Database is currectly set up and its initial status
+        is ONGOING
+        """
 
 
         test_diffusion = self.factory.MailDiffusion(address="dummy@dummy.com",
@@ -106,6 +125,10 @@ class TestSoapInterface(unittest.TestCase):
         self.assertEqual(Database.get_request_status(Database.get_id_by_query()), REQ_STATUS.ongoing)
 
     def test_json_file(self):
+        """
+        This tests check that the json instruction file is correctly created 
+        with the necessary informations
+        """
 
         test_diffusion = self.factory.MailDiffusion(address="dummy@dummy.com",
                                                    headerLine="dummyHeaderLine",
@@ -153,6 +176,7 @@ class TestSoapInterface(unittest.TestCase):
         SoapServer.stop_server()
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
+        os.environ.pop(ENV.soap_url)
         tempfile.tempdir = None
         Database.reset()
         SettingsManager.reset()
