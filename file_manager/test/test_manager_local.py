@@ -23,10 +23,14 @@ from file_manager.manager import FileManager
 import file_manager.manager
 
 class TestFileManager_local(unittest.TestCase):
+    """
+    Thoses tests check that json files are processed correctly
+    and that local copy of files from staging post is done properly.
+    """
 
     def setUp(self):
 
-        # DebugSettingsManager.test_sftp = "False"
+        # Configuring repertories
         file_manager.manager.TEST_SFTP = False
         self.tmpdir  = mkdtemp(prefix='harnais_')
         os.environ["TMPDIR"] = self.tmpdir
@@ -53,7 +57,7 @@ class TestFileManager_local(unittest.TestCase):
 
         SFTPserver.create_server(self.staging_post)
 
-        # create json file
+        # create json file to process
         self.dir_a = HarnessTree.get("temp_dissRequest_A")
         self.json_file = json_file = join(self.dir_a, "test_instruction_file.json")
         instr = {'hostname': socket.gethostname(),
@@ -69,6 +73,7 @@ class TestFileManager_local(unittest.TestCase):
                                'dummyHeaderLine',
                                'address': 'dummy@dummy.com'}
                                }
+        # put it in cache/A_dissreq
         with open(json_file, "w") as file_:
             json.dump(instr, file_)
         # create corresponding record in database:
@@ -86,7 +91,9 @@ class TestFileManager_local(unittest.TestCase):
             database.session.commit()
 
     def test_download_staging_post(self):
-
+        """
+        We check that files on staging post get in cache/B_fromstaging
+        """
         self.assertFalse(file_manager.manager.TEST_SFTP)
 
         files_list = []
@@ -107,6 +114,10 @@ class TestFileManager_local(unittest.TestCase):
 
 
     def test_download_staging_post_zip(self):
+        """
+        We check that a tmp.zip file on staging post is processed correctly
+        when packaged
+        """
 
         self.assertFalse(file_manager.manager.TEST_SFTP)
         
@@ -126,6 +137,7 @@ class TestFileManager_local(unittest.TestCase):
             all_files_fetched += [item for item in files_fetched if
                                     item not in all_files_fetched]
 
+        #process the tmp.zip file by renaming it correctly
         FileManager.package_data(all_files_fetched, diss_instructions)
         dir_c_list = os.listdir(FileManager.dir_c)
         self.assertTrue(len(dir_c_list)>0)
@@ -137,6 +149,7 @@ class TestFileManager_local(unittest.TestCase):
 
 
     def tearDown(self):
+        #clearing repertories
         cleared = Tools.move_dir_to_trash_can(self.tmpdir)
         if not cleared:
             rmtree(self.tmpdir)

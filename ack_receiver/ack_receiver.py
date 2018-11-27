@@ -1,3 +1,8 @@
+"""
+    This module processes the ack files sent by difmet and update
+    the database status for the corresponding request Id to 
+    failure, success or keep it at ongoing.
+"""
 import logging
 import os
 from os import listdir

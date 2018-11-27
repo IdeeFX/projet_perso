@@ -1,3 +1,9 @@
+"""
+    This module processes the files in cache/C_tosend by sending it via FTP
+    through n=sendFTPlimitConn process that are occuring independantly and 
+    concurrently. Each FTP upload has its own timeout computed through the bandwidth
+    parameter and the size of the file uploaded
+"""
 import argparse
 import logging
 import multiprocessing

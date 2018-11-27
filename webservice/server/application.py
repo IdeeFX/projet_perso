@@ -1,5 +1,9 @@
-
 #!/usr/bin/env python
+
+"""
+    This module is responsible for defining the flask server through the APP variable
+    The server can also be started by calling that module direclt for debugging purpose
+"""
 import logging
 import os
 import socket

@@ -20,9 +20,14 @@ import file_sender.sender
 import utils.const
 
 class TestFileManager_SFTP(unittest.TestCase):
+    """
+    Testing FTP transfers, without hitting a timeout and
+    when one big file transfer hits the timeout.
+    """
 
     def setUp(self):
 
+        # Configuring repertories
         file_sender.sender.DEBUG = False
         self.tmpdir  = mkdtemp(prefix='harnais_')
         os.environ["TMPDIR"] = self.tmpdir
@@ -31,11 +36,18 @@ class TestFileManager_SFTP(unittest.TestCase):
         self.ack_dir = join(self.tmpdir, "ack_dir")
         os.mkdir(self.ack_dir)
 
+        #killing ftpserver in case one exists
         Tools.kill_process("diffmet_test_ftp_server")
+        # start FTP server
         FTPserver.create_server("/")
 
     def test_sending_timeout(self):
-
+        """
+        Testing FTP transfer of 4 very small files and one big file.
+        Small files still get transfered despite small timeout because 
+        process can't be closed quick enough but the big file get stuck 
+        half way as required.
+        """
         # prepare settings
         SettingsManager.load_settings()
         SettingsManager.update(dict(harnaisLogdir=self.tmpdir,
@@ -88,7 +100,9 @@ class TestFileManager_SFTP(unittest.TestCase):
         self.assertTrue(expected_result)
 
     def test_sending(self):
-
+        """
+        Testing FTP transfer of 5 small files
+        """
         # prepare settings
         SettingsManager.load_settings()
         SettingsManager.update(dict(harnaisLogdir=self.tmpdir,
@@ -134,10 +148,13 @@ class TestFileManager_SFTP(unittest.TestCase):
         self.assertTrue(expected_result)
 
     def tearDown(self):
+        #stopping FTP server
         FTPserver.stop_server()
+        #clearing repertories
         cleared = Tools.move_dir_to_trash_can(self.tmpdir)
         if not cleared:
             rmtree(self.tmpdir)
+        # cleaning up environment
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
         tempfile.tempdir = None

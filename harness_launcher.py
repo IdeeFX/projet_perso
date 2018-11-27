@@ -1,4 +1,8 @@
-
+"""
+This script is the entry point for the harness when in production. It is summoned by a crontab.
+It launches and wait for an exception coming from the 3 modules (ack_receiver, manager, sender).
+If one crashed, it restarts it.
+"""
 import logging
 import os
 from time import sleep
@@ -25,7 +29,6 @@ except ValueError:
     DEBUG = False
 
 LOGGER = None
-
 
 def launch_named_process(proc, name):
     if not DEBUG:
@@ -68,6 +71,7 @@ def launch(launch_logger=None, debug=True):
     else:
         executor_class = ProcessPoolExecutor
 
+    # list the process to manage
     process_status = [None]*3
     proc_list = [DifmetSender.process,
                  FileManager.process,
@@ -102,16 +106,17 @@ def launch(launch_logger=None, debug=True):
 
 if __name__ == '__main__':
 
-
+    # prevent launching two harness_service_launcher
     res = Tools.get_pid("harness_service_launcher")
     if len(res) > 1:
         raise RuntimeError("harness_service_launcher already running.")
 
+    # Set the process name to harness_service_launcher
     setproctitle("harness_service_launcher")
 
     logger = get_logger()
 
-    # kill pid of previous process
+    # kill pid of already existing process
     for process in ["harness_difmet_sender",
                     "harness_file_manager",
                     "harness_ack_receiver"]:
@@ -119,7 +124,7 @@ if __name__ == '__main__':
         for pid in pid_killed:
             logger.info("Killed process %s with pid %i", process,pid)
 
-
+    # launch the harness
     launch(launch_logger = logger, debug=DEBUG)
 
 
