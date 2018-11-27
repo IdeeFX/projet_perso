@@ -53,7 +53,7 @@ class CompleteTest(unittest.TestCase):
 
         self.hostname = hostname = socket.gethostname()
         self.port = port = os.environ.get(ENV.port) or PORT
-        self.soap_url = ('http://{hostname}:{port}/harnais-diss-v2/'
+        self.soap_url = os.environ[ENV.soap_url]= ('http://{hostname}:{port}/harnais-diss-v2/'
                          'webservice/Dissemination?wsdl'.format(hostname=hostname,
                          port=port))
 
@@ -149,6 +149,7 @@ class CompleteTest(unittest.TestCase):
             thr.start()
             thr.join()
             print("DifMet finished")
+            FTPserver.stop_server()
         except KeyboardInterrupt:
             FTPserver.stop_server()
 
@@ -240,6 +241,7 @@ class CompleteTest(unittest.TestCase):
             rmtree(self.tmpdir)
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
+        os.environ.pop(ENV.soap_url)
         tempfile.tempdir = None
         Database.reset()
         SettingsManager.reset()

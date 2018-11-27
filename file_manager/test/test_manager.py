@@ -131,7 +131,7 @@ class TestFileManager_SFTP(unittest.TestCase):
         self.assertTrue(len(dir_c_list)>0)
         if len(dir_c_list)>0:
             file_packaged = dir_c_list[0]
-            self.assertTrue(match('fr-meteo-harnaisdiss,00000,,\d+.tar.gz', file_packaged) is not None) 
+            self.assertTrue(match(r'fr-meteo-harnaisdiss,00000,,\d+.tar.gz', file_packaged) is not None) 
 
 
     def test_download_large_file(self):

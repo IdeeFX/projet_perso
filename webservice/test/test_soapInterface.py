@@ -40,7 +40,7 @@ class TestSoapInterface(unittest.TestCase):
         SettingsManager.reset()
         self.hostname = hostname = socket.gethostname()
         self.port = port = os.environ.get(ENV.port) or PORT
-        self.soap_url = ('http://{hostname}:{port}/harnais-diss-v2/'
+        self.soap_url = os.environ[ENV.soap_url]= ('http://{hostname}:{port}/harnais-diss-v2/'
                                     'webservice/Dissemination?wsdl'.format(hostname=hostname,
                                     port=port))
         SoapServer.create_server()
@@ -153,6 +153,7 @@ class TestSoapInterface(unittest.TestCase):
         SoapServer.stop_server()
         os.environ.pop(ENV.settings)
         os.environ.pop("TMPDIR")
+        os.environ.pop(ENV.soap_url)
         tempfile.tempdir = None
         Database.reset()
         SettingsManager.reset()

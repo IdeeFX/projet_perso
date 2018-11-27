@@ -120,7 +120,7 @@ class Database():
 
         # if list is empty, no records
         if records == []:
-            LOGGER.warning("Requesting status for non existing request "
+            LOGGER.error("Requesting status for non existing request "
                            "Id %s in database.", req_id)
             return REQ_STATUS.failed
 
@@ -150,7 +150,7 @@ class Database():
 
         # if list is empty, no records
         if records == []:
-            LOGGER.warning("Requesting status for non existing request "
+            LOGGER.error("Requesting status for non existing request "
                            "Id %s in database.", req_id)
         
         return len(records)
@@ -162,7 +162,7 @@ class Database():
             records = Diffusion.query.filter_by(**dict(rxnotif=True, fullrequestId=req_id)).all()
 
         if records == []:
-            LOGGER.warning("Requesting status for non existing request "
+            LOGGER.error("Requesting status for non existing request "
                            "Id %s in database.", req_id)
         
         return len(records)
@@ -213,9 +213,8 @@ class Database():
             records = Diffusion.query.filter(Diffusion.fullrequestId ==req_id).all()
 
             if len(records) ==0:
-                    message = ("No corresponding request id in database "
-                               "for request %s" % req_id)
-                    LOGGER.warning(message)
+                LOGGER.error("Requesting status for non existing request "
+                            "Id %s in database.", req_id)
             else:
                 msg_list = []
                 for rec in records:
