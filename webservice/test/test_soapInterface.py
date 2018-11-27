@@ -108,6 +108,7 @@ class TestSoapInterface(unittest.TestCase):
         is ONGOING
         """
 
+
         test_diffusion = self.factory.MailDiffusion(address="dummy@dummy.com",
                                                    headerLine="dummyHeaderLine",
                                                    subject= "dummySubject",
