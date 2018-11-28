@@ -181,7 +181,7 @@ class DifmetSender:
                          timeout, file_)
         else:
             # conversion in Mbits/s with shift_expr << operator
-            timeout = (required_bandwith/(1 << 17))/bandwidth*TIMEOUT_BUFFER
+            timeout = (required_bandwith/(1 << 17))/bandwidth + TIMEOUT_BUFFER
             LOGGER.debug("Ftp timeout computed to %s s for file %s.",
                          timeout, file_)
 
@@ -205,7 +205,7 @@ class DifmetSender:
 
         # don't takes files into account if they end by .tmp
 
-        list_entries = [item for item in list_entries if match(".*\.tmp$", item) is None]
+        list_entries = [item for item in list_entries if match(r".*\.tmp$", item) is None]
 
         list_entries = [os.path.join(dirname, entry) for entry in list_entries]
         # sort by date
@@ -290,10 +290,12 @@ class DifmetSender:
                         Tools.remove_file(file_, "difmet archive", LOGGER)
                     ftp.quit()
                 except multiprocessing.TimeoutError:
+                    ftp.close()
                     proc.terminate()
                     
                     LOGGER.error("Timeout of %f s exceeded for sending file %s"
                                 " on difmet. Checking upload.", timeout, original_file)
+                    _, ftp = cls.connect_ftp()
                     upload_ok = cls.check_transfer(basename(original_file), ftp)
                     if upload_ok:
                         LOGGER.warning("Process hit the timeout but "
@@ -331,10 +333,9 @@ class DifmetSender:
 
     @classmethod
     def check_transfer(cls, filename, ftp):
-
+        #  check if file exists on remote server
         ftpdir = SettingsManager.get("dissFtpDir")
         ftp.cwd(ftpdir)
-        #  check if file exists on remote server
         if filename in [name for name, data in list(ftp.mlsd())]:
             upload_ok = True
         else:

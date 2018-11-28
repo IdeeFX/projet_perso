@@ -14,7 +14,7 @@ import tempfile
 from settings.settings_manager import SettingsManager, DebugSettingsManager
 from validation.mock_server.openwis_sftp import SFTPserver
 from shutil import rmtree
-from utils.const import REQ_STATUS
+from utils.const import REQ_STATUS, TIMEOUT_BUFFER
 from utils.database import Database, Diffusion
 from utils.setup_tree import HarnessTree
 from utils.tools import Tools
@@ -228,7 +228,7 @@ class TestConnectionPointer(unittest.TestCase):
 
         t = ConnectionPointer.compute_timeout(100000)
 
-        self.assertEqual(t, 0.152587890625)
+        self.assertEqual(t, TIMEOUT_BUFFER + 0.152587890625)
 
     def tearDown(self):
         cleared = Tools.move_dir_to_trash_can(self.tmpdir)
