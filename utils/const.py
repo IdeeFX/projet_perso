@@ -31,7 +31,7 @@ SftpSettings = namedtuple("SFTP_PARAMETERS", ["timeout_buffer",
                                             "workers"]
                            )
 
-TIMEOUT_BUFFER = 1
+TIMEOUT_BUFFER = 120
 
 RANDOM_ID_LENGTH = 20
 
