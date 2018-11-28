@@ -290,10 +290,12 @@ class DifmetSender:
                         Tools.remove_file(file_, "difmet archive", LOGGER)
                     ftp.quit()
                 except multiprocessing.TimeoutError:
+					ftp.close()
                     proc.terminate()
                     
                     LOGGER.error("Timeout of %f s exceeded for sending file %s"
                                 " on difmet. Checking upload.", timeout, original_file)
+                    _, ftp = cls.connect_ftp()
                     upload_ok = cls.check_transfer(basename(original_file), ftp)
                     if upload_ok:
                         LOGGER.warning("Process hit the timeout but "
