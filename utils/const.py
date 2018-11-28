@@ -35,6 +35,8 @@ TIMEOUT_BUFFER = 1
 
 RANDOM_ID_LENGTH = 20
 
+MSG_MAX_LENGTH = 255
+
 PrioritiesScale = namedtuple("PRIORITIES",["maximum",
                             "minimum",
                             "default"])

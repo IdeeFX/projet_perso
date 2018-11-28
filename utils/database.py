@@ -216,7 +216,7 @@ class Database():
                 LOGGER.error("Requesting status for non existing request "
                             "Id %s in database.", req_id)
             else:
-                msg_list = []
+                msg_list = ["Dissemination status is %s" % status]
                 for rec in records:
                     msg_list.append(rec.message)
 

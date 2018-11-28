@@ -205,7 +205,7 @@ class DifmetSender:
 
         # don't takes files into account if they end by .tmp
 
-        list_entries = [item for item in list_entries if match(".*\.tmp$", item) is None]
+        list_entries = [item for item in list_entries if match(r".*\.tmp$", item) is None]
 
         list_entries = [os.path.join(dirname, entry) for entry in list_entries]
         # sort by date

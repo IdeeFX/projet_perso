@@ -15,7 +15,7 @@ from spyne.service import ServiceBase
 from spyne.server.wsgi import WsgiApplication
 from notification_receiver.receiver import Notification
 from utils.database import Database
-from utils.const import PORT, ENV
+from utils.const import PORT, ENV, REQ_STATUS, MSG_MAX_LENGTH
 
 
 LOGGER = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class DisseminationStatus(ComplexModel):
 
     requestId = Unicode.customize(sub_ns="")
     requestStatus = Unicode(
-        values=['ONGOING_DISSEMINATION', 'DISSEMINATED', 'FAILED']).customize(sub_ns="")
+        values=[REQ_STATUS.ongoing, REQ_STATUS.succeeded, REQ_STATUS.failed]).customize(sub_ns="")
     message = Unicode.customize(sub_ns="")
 
     def __init__(self,  requestId, requestStatus, message):
@@ -119,9 +119,12 @@ class DisseminationImplService(ServiceBase):
         ctx.descriptor.out_message._type_info['disseminationStatus'].Attributes.sub_ns = ""
         host = Notification.get_hostname(client_ip)
         status, message = Database.get_diss_status(requestId+host)
-        LOGGER.info("Status for for requestId %s is %s", requestId+host, status)
-
+        LOGGER.info("Status for for requestId %s is %s with message %s", requestId+host, status, message)
+        # there is a character limit for the message 
+        # so we truncate
+        message = message[:MSG_MAX_LENGTH]
         diss_resp = DisseminationStatus(requestId, status, message)
+        
         return diss_resp
 
 
