@@ -334,6 +334,8 @@ class DifmetSender:
     @classmethod
     def check_transfer(cls, filename, ftp):
         #  check if file exists on remote server
+        ftpdir = SettingsManager.get("dissFtpDir")
+        ftp.cwd(ftpdir)
         if filename in [name for name, data in list(ftp.mlsd())]:
             upload_ok = True
         else:
