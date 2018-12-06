@@ -90,6 +90,7 @@ class DifmetSender:
                                             (cls.upload_file, file_, dir_c,dir_d),
                                             dict(timeout=timeout))
 
+            # for testing and debugging purpose only
             cls.check_end_loop(counter, max_loops)
 
 
@@ -106,6 +107,7 @@ class DifmetSender:
 
     @classmethod
     def check_end_loop(cls, counter, max_loops):
+        # for testing and debugging purpose only
         if counter == max_loops:
             LOGGER.info("Performed required %i loops, exiting.", counter)
             cls.stop()
@@ -373,6 +375,10 @@ class DifmetSender:
         return upload_ok, time() - start
 
 if __name__ == '__main__':
+
+
+    # this is used for testing and debugging purpose only. It allows to launch the process independently
+    # for user specified n loops
     process_name = "harness_difmet_sender"
     setproctitle(process_name)
     parser = argparse.ArgumentParser(description='File sender process loop.')

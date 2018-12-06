@@ -71,6 +71,7 @@ class FileManager:
     def process(cls, max_loops=0):
         counter = 0
         instr_to_process = False
+        # initilization
         cls.setup_process()
         loop_time = 0
         while cls._running:
@@ -115,6 +116,10 @@ class FileManager:
                 process_ok, instructions, files_fetched = cls.process_instruction_file(
                     file_to_process)
 
+                # if the fetching went ok, we store the rest of
+                # the instructions contained in the instruction files
+                # and update the list of files fetched from the staging
+                # post
                 if process_ok:
                     req_id = instructions["req_id"]
                     hostname = instructions["hostname"]
@@ -122,12 +127,19 @@ class FileManager:
                     all_files_fetched += [item for item in files_fetched if
                                          item not in all_files_fetched]
 
+
+            # the files downloaded are packaged according to the 
+            # instructions stored in diss_instructions
             cls.package_data(all_files_fetched, diss_instructions)
 
+            # removing instruction files processed
             cls.clear_instruction_files(instruction_files)
 
+            # as files should have been packaged and instruction files removed
+            # any file remaining is an orphan
             cls.clear_orphan_files(dir_b)
 
+            # for testing and debugging purpose only
             cls.check_end_loop(counter, max_loops)
 
             loop_time = time() - start_time
@@ -140,7 +152,7 @@ class FileManager:
             filename = os.path.basename(file_path)
             request_id_list = Database.get_id_list_by_filename(filename)
 
-            # no reference
+            # no reference => file is an orphan
             if request_id_list == []:
                 Tools.remove_file(file_path, "orphan file", LOGGER)
                 continue
@@ -155,6 +167,8 @@ class FileManager:
             LOGGER.info("Processing downloaded file %s linked to "
                         "requests %s", file_path, request_id_list)
 
+            # instantiate a DiffMetManager object that connects the file
+            # to its single or multiple requests and instructioons
             diff_manager = DiffMetManager(request_id_list,
                                           file_path,
                                           diss_instructions)
@@ -175,6 +189,7 @@ class FileManager:
 
     @classmethod
     def check_end_loop(cls, counter, max_loops):
+        # for testing and debugging purpose only
         if counter == max_loops:
             LOGGER.info("Performed required %i loops, exiting.", counter)
             cls.stop()
@@ -195,6 +210,10 @@ class FileManager:
 
     @classmethod
     def setup_process(cls):
+        """
+        Load settings, initialize logging and tree structure
+        and connect to database
+        """
         if not cls._running:
             setup_logging()
             LOGGER = logging.getLogger(__name__)
@@ -267,6 +286,9 @@ class FileManager:
 
     @staticmethod
     def check_file_age(filename):
+        """
+        Discard files that are too old
+        """
         time_limit = SettingsManager.get("keepFileTime") or None
         if time_limit is not None:
             check = (time() - os.stat(filename).st_mtime) > time_limit
@@ -328,6 +350,9 @@ class FileManager:
 
     @staticmethod
     def fetch_files(req_id, hostname, uri):
+        """
+        Creates a ConnectionPointer object and retrives the files
+        """
 
         connection_pointer = ConnectionPointer(req_id, hostname)
         fetch_ok, files_fetched = connection_pointer.fetch(uri)
@@ -355,6 +380,12 @@ class ConnectionPointer:
         self.req_id = req_id + hostname
 
     def update_filename(self, filename):
+        """
+        Register a new entry in the database in case
+        there are multiples files for one request_id. If one request id
+        is requesting N files, there should be N entries in the database, each with its own diff_external_id.
+        """
+
         # fetch database
         database = Database.get_database()
 
@@ -417,6 +448,7 @@ class ConnectionPointer:
                 self.update_filename(os.path.basename(destination_path))
                 files_fetched.append(destination_path)
             fetch_ok = True
+        # case where hostname is localhost but staging post is not a directory
         elif self.hostname == "localhost" and \
              not os.path.isdir(dir_path) and \
              not TEST_SFTP:
@@ -428,6 +460,7 @@ class ConnectionPointer:
             Database.update_field_by_query("message", msg,
                                            **dict(fullrequestId=self.req_id))
             fetch_ok = False
+        # SFTP case
         else:
             fetch_ok, files_fetched = self.sftp_dir(dir_path, destination_dir)
 
@@ -435,6 +468,9 @@ class ConnectionPointer:
 
 
     def _sftp_file(self, dir_path, file_path, destination_path, skip):
+        """
+        download the file unless ordered to skip because file had already been downloaded
+        """
 
         if not skip:
             transport = paramiko.Transport((self.hostname, self.port))
@@ -447,6 +483,16 @@ class ConnectionPointer:
 
 
     def sftp_dir(self, dir_path, destination_dir):
+        """
+        Connect to a remote directory by sftp and list the files to download.
+        Then the size of the files are used to compute a global timeout and all
+        files are then downloaded.
+        Dissemination is a failure if any file is over the size limit or if the
+        staging post doesn't exist.
+        Otheriwse, if the timeout is hit, the function returns a failure to 
+        download but there can be another attempt when the instruction file
+        gets reprocessed.
+        """
 
         files_to_sftp = []
         try:
@@ -455,6 +501,14 @@ class ConnectionPointer:
             sftp = paramiko.SFTPClient.from_transport(transport)
             sftp.chdir(dir_path)
             required_bandwith = 0
+            # for each file we update the files_to_sftp list.
+            # This list contains a tuple of 4 elements
+            # (staging post path, file_to_download_path, file_downloaded_path, skip)
+            # with skip = False if file has not been downloaded and True otherwise
+            # The reason for skip is that we still want to keep track of files
+            # that should have been retried for an instruction file, even if there was no need
+            # to download it a second time. Keeping track of those files allows
+            # to link them to their request id in the database
             for item in sftp.listdir(dir_path):
                 file_path = os.path.join(dir_path, item)
                 destination_path = os.path.join(destination_dir, item)
@@ -490,11 +544,14 @@ class ConnectionPointer:
             transport.close()
 
             # initialize the multiprocessing manager
+            # this creates a pool of workers that automatically dispatch the
+            # downloads between them
             nb_workers = SettingsManager.get("getSFTPlimitConn")
             if DEBUG:
                 pool = DebugSettingsManager.sftp_pool(processes=nb_workers)
             else:
                 pool = multiprocessing.Pool(processes=nb_workers)
+            # launch the pool of jobs
             results = pool.starmap_async(self._sftp_file, files_to_sftp)
             pool.close()
 
@@ -510,6 +567,8 @@ class ConnectionPointer:
                                 " %f. Timeout is fixed at %s s.", nb_downloads,
                                 required_bandwith, timeout)
                     start = time()
+                    # activate the timeout. If the jobs are not finished by timeout,
+                    # results.get will trigger a multiprocessing.TimeoutError
                     results.get(timeout=timeout)
                     delta_t = time() - start
                     LOGGER.debug("Files downloaded in %f seconds" % delta_t)
@@ -524,10 +583,12 @@ class ConnectionPointer:
 
             sftp.close()
 
+        # case where the sftp interface (paramiko) returns an exception
         except (paramiko.SSHException,
                 paramiko.ssh_exception.NoValidConnectionsError):
             LOGGER.exception("Couldn't connect to %s", self.hostname)
             sftp_success = False
+        # case where a file is too big
         except FileOverSizeLimit:
             msg = ('file %s found on openwis staging post'
                    'is over the size limit %f. Dissemination '
@@ -538,6 +599,7 @@ class ConnectionPointer:
             Database.update_field_by_query("message", msg,
                                            **dict(fullrequestId=self.req_id))
             sftp_success = False
+        # case where the staging post path is incorrect
         except FileNotFoundError:
             msg = ('Incorrect path %s for openwis staging post'
                    'Dissemination failed' % dir_path)
@@ -550,12 +612,17 @@ class ConnectionPointer:
             sftp_success = False
 
         # update database
+        # The database is updated with as many new entries as there were files
+        # downloaded
         files_downloaded = self.update(sftp_success, files_to_sftp)
 
         return sftp_success, files_downloaded
 
     @staticmethod
     def check_download_success(files_to_sftp, sftp_success):
+        """
+        Files download is checked to make sure ALL files have been downloaded
+        """
 
         for _, remote_path, local_path, skip in files_to_sftp:
             if skip:
@@ -576,7 +643,7 @@ class ConnectionPointer:
 
     @staticmethod
     def compute_timeout(required_bandwith):
-        # compute timeout
+        # compute timeout by doing timeout = size/bandwidth + buffer
         bandwidth = SettingsManager.get("bandwidth")
         if bandwidth in [None, 0]:
             LOGGER.warning("Incorrect value for harness settings bandwidth. "
@@ -595,6 +662,12 @@ class ConnectionPointer:
         return timeout
 
     def update(self, sftp_success, files_to_sftp):
+        """
+        Link the files to the database
+        and extract the path of the file downloaded
+        from the files_to_sftp list of tuples.
+        """
+
         files_downloaded = []
         if sftp_success:
             for  _, _, local_path, _ in files_to_sftp:
@@ -605,8 +678,8 @@ class ConnectionPointer:
 
 class DiffMetManager:
     """
-        This class is responsible for renaming the files and 
-        compiling the xml difmet instruction file.
+    This class is responsible for renaming the files and 
+    compiling the xml difmet instruction file.
     """
     def __init__(self, id_list, file_path, instructions_dict):
 
@@ -621,6 +694,8 @@ class DiffMetManager:
         for req_id in id_list:
             if req_id in instructions_dict.keys():
                 self.instructions[req_id] = instructions_dict[req_id]
+        # create a serial number looping from 00000 to 99999 and incrementing by one each time
+        # a file is packaged
         self.incr = Incrementator.get_incr()
         self.dir_b = FileManager.dir_b
         self.dir_c = FileManager.dir_c
@@ -660,6 +735,7 @@ class DiffMetManager:
         new_filename = re.sub(reg, repl, old_filename)
         new_path = os.path.join(self.dir_b, new_filename)
 
+        # rename the file
         shutil.move(old_path, new_path)
         LOGGER.debug("Renaming file %s in %s",
                      old_filename, new_filename)
@@ -667,12 +743,35 @@ class DiffMetManager:
         return new_filename
 
     def rename(self):
+        """
+        Rename files using user specified regex
+        """
 
+        # Extract all the regex specified by users.
+        # Each regex should be a dictionnary with two keys,
+        # pattern_in and pattern_out for the substitution.
+        # The program can extract up to MAX_REGEX from the settings
+        # like this in the settings.yaml :
+        # fileRegex1:
+        #     pattern_in:
+        #     pattern_out:
+        # fileRegex2:
+        #     pattern_in:
+        #     pattern_out:
+        # ...
+        # fileRegex<MAX_REGEX>:
+        #     pattern_in:
+        #     pattern_out:
+        # Each set of regex is applied one after the other.
+        # Except for tmpregex that has only one value corresponding to 
+        # pattern_out
         regex_settings = [SettingsManager.get(
             "fileRegex%i" % i, {}) for i in range(1, MAX_REGEX+1)]
 
         new_filename = self.original_filename
         zip_detector = r"^tmp\.zip\..*"
+        # we check if the file is a zipped one
+        # by looking if it matches r"^tmp\.zip\..*"
         if re.match(zip_detector, new_filename) is not None:
             zip_regex = SettingsManager.get("tmpregex")
             if zip_regex is None:
@@ -689,6 +788,7 @@ class DiffMetManager:
                 elif idx == 0:
                     LOGGER.error("No regex defined in fileregex1 settings !")
 
+        # we check that the file renamed fits difmet standards
         filename_ok = self.check_filename(new_filename)
 
         if filename_ok:
@@ -697,9 +797,17 @@ class DiffMetManager:
                                            **dict(original_file=self.original_filename))
             self.new_filename = new_filename
 
+        # we return if the process returned a fit new filename or not
         return filename_ok
 
     def compile_archive(self):
+        """
+        Once the file is renamed and the difmet instruction file 
+        created, they are both packaged and sent to cache/C_tosend 
+        repertory 
+        """
+
+        # create the difmet instruction file
         instr_file_path = self._create_diffmet_instr()
 
         basename = os.path.basename(instr_file_path)
@@ -764,6 +872,7 @@ class DiffMetManager:
         if limit ==0:
             end_date = None
         else:
+            # convert limit in minutes in seconds
             end_date = datetime.utcnow() + timedelta(seconds=limit*60)
 
             end_date = end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -839,6 +948,10 @@ class DiffMetManager:
             mail_to_xml(element, diff_info, prefix="")
 
     def _create_diffmet_instr(self):
+        """
+        Create the difmet instruction file according to the information contained
+        in self.instructions for all the request Id linked to the file
+        """
 
         def get_prefix(diff):
             if diff["DiffusionType"] == "FTP":
@@ -850,6 +963,7 @@ class DiffMetManager:
 
 
         date_str = strftime("%Y%m%d%H%M%S")
+        # difmet instruction file name
         path_to_file = ",".join((SettingsManager.get("diffFileName"),
                                  self.incr,
                                  "",
@@ -858,6 +972,7 @@ class DiffMetManager:
         path_to_file += ".diffusions.xml"
         path_to_file = os.path.join(self.dir_b, path_to_file)
 
+        # create the xml structure
         root = etree.Element("product_diffusion")
         product = etree.SubElement(root, "product")
         etree.SubElement(product,"file_name").text = Tools.ack_str(self.new_filename)
@@ -865,11 +980,13 @@ class DiffMetManager:
         etree.SubElement(product,"priority").text = Tools.ack_str(self._get_priority())
         etree.SubElement(product,"archive").text = "0"
         end_date = self._get_end_date()
+        # add a end_date only if user specified one
         if end_date is not None:
             etree.SubElement(product,"end_to_live_date").text = Tools.ack_str(end_date)
-
+        # loop on all the requests linked to the file to send to difmet
         for req_id in self.id_list:
             diffusion = etree.SubElement(product,"diffusion")
+            # fetch the informations stored from json instruction file
             instr = self.instructions[req_id]
             diff = instr["diffusion"]
             etree.SubElement(diffusion,"diffusion_externalid").text = Database.get_external_id(req_id, self.new_filename)
@@ -877,6 +994,7 @@ class DiffMetManager:
 
             self.diff_info_to_xml(diffusion, diff)
 
+            # if an alternative diffusion is requested, it is added
             if "alternativeDiffusion" in instr.keys():
                 altdiff = instr["alternativeDiffusion"]
                 prefix = get_prefix(altdiff)
@@ -890,6 +1008,7 @@ class DiffMetManager:
         etree.SubElement(product, "diffusionnumber").text=str(len(self.id_list))
 
         etree.SubElement(root, "productnumber").text="1"
+        # Dump the xml tree into a file
         etree.ElementTree(root).write(path_to_file,
                                       pretty_print=True,
                                       encoding='UTF-8',
@@ -899,6 +1018,8 @@ class DiffMetManager:
 
 if __name__ == '__main__':
 
+    # this is used for testing and debugging purpose only. It allows to launch the process independently
+    # for user specified n loops
     process_name = "harness_file_manager"
     setproctitle(process_name)
     parser = argparse.ArgumentParser(description='File Manager process loop.')
