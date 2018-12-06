@@ -35,7 +35,13 @@ except ValueError:
     DEBUG = False
 
 class AckReceiver:
+    """
+    This class processes the ack files sent by difmet and update
+    the database status for the corresponding request Id to 
+    failure, success or keep it at ongoing.
+    """
 
+    #Variables to store the ack deposit repertory and the status of the process
     _running = False
     dir_ack = None
 
@@ -47,20 +53,27 @@ class AckReceiver:
         while cls._running:
             counter += 1
             cls.signal_loop(counter)
+            # load settings
             cls.load_settings()
             idle_time = SettingsManager.get("ackProcessIdle")
             sleep(idle_time)
             cls.dir_ack = dir_ack = HarnessTree.get("dir_ack")
 
+            # process ack files
             cls.process_ack_files(dir_ack)
+            # process alarm files
             cls.process_alarm_files(dir_ack)
 
+            # for testing and debugging purpose only
             if counter == max_loops:
                 LOGGER.info("Performed required %i loops, exiting.", counter)
                 cls.stop()
 
     @classmethod
     def setup_process(cls):
+        """
+        Prepare logging, check the repertories and connect to database
+        """
         if not cls._running:
             setup_logging()
             LOGGER = logging.getLogger(__name__)
@@ -94,43 +107,66 @@ class AckReceiver:
 
     @classmethod
     def process_ack_files(cls, dir_ack):
+        """
+        Loop on files on dir_ack to find ack files.
+        If found, it is processed
+        """
         for file_ in listdir(dir_ack):
             file_path = join(dir_ack, file_)
             ack_file = re.match(r".*.acqdifmet.xml$", file_)
             if ack_file is None:
                 continue
             LOGGER.debug("Processing difmet ack file %s.", file_)
+            # interpreting the ack file
             cls.get_ack(file_path)
+            # removing the file now that it has been read
             Tools.remove_file(file_path, "difmet ack", LOGGER)
 
     @classmethod
     def process_alarm_files(cls, dir_ack):
+        """
+        Loop on files on dir_ack to find alarm files.
+        If found, it is processed
+        """
         for file_ in listdir(dir_ack):
             file_path = join(dir_ack, file_)
             alarme_file = re.match(r".*.errdifmet.xml$", file_)
             if alarme_file is None:
                 continue
             LOGGER.debug("Processing difmet alarm file %s.", file_)
+            # interpreting the alarm file
             cls.get_alarm(file_path)
+            # removing the file now that it has been read
             Tools.remove_file(file_path, "difmet alarm", LOGGER)
 
     @classmethod
     def stop(cls):
+        """
+        Stop the process
+        """
         LOGGER.info("Received request for %s process to stop looping.",
                      cls.__name__)
         cls._running = False
 
     @staticmethod
     def _check_file_age(filename):
+        """
+        Discard files that are too old
+        """
         time_limit = SettingsManager.get("delAck")
         return (time() - os.stat(filename).st_mtime) > time_limit
 
     @classmethod
     def get_alarm(cls, file_):
+        """
+        Process an alarm file
+        """
+
 
         tree = etree.parse(file_)
         root = tree.getroot()
 
+        # loop on all the alarm groups in the file and log the messages
         for alarm in root.findall("alarm"):
             diff_external_id = alarm.findtext("diffusion_externalid")
             dtb_key = dict(diff_externalid=diff_external_id)
@@ -150,7 +186,7 @@ class AckReceiver:
             alarm_msg = "\n".join(msg_list)
             LOGGER_ALARM.debug("Alarm message is : \n %s", alarm_msg)
 
-
+             # Update the database with the message if possible
             if req_id is not None:
                 cls.update_database_message(alarm_msg, req_id, diff_external_id)
 
@@ -282,6 +318,9 @@ class AckReceiver:
 
 
 class AckCompiler:
+    """
+    This object stores all the AckStatus objects and their corresponding diff_ext_id.
+    """
 
     def __init__(self):
         self.diff_ext_id = []
@@ -303,6 +342,12 @@ class AckCompiler:
 
 
 class AckStatus:
+
+    """
+    This object connects the diff_external_id to the fullrequestId 
+    and compile the status once all the ack have been read in 
+    the ack file.
+    """
 
     def __init__(self, ext_id, prod_id):
         self.ext_id = ext_id
@@ -353,6 +398,10 @@ class AckStatus:
 
 
 if __name__ == '__main__':
+
+
+    # this is used for testing and debugging purpose only. It allows to launch the process independently
+    # for user specified n loops
     process_name = "harness_ack_receiver"
     setproctitle(process_name)
 

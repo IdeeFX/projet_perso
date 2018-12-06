@@ -25,6 +25,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Notification():
+    """
+    Notification objects are only created by a SOAP request on the
+    disseminate service. The object store all the request informations
+    and initialize the first datebase record corresponding to the received requestId.
+    """
 
     def __init__(self, req_id, uri, diss_info, client_ip):
 
@@ -93,8 +98,10 @@ class Notification():
         request_file = "{priority}_{date_reception}_{requestid}_{hostname}.json".format(
             **rec_dict)
 
+        # full path to request file
         self.request_file = request_file = os.path.join(out_dir, request_file)
 
+        # initialize the dictionary that will be dumped into the json file
         request_dump = dict(date=rec_dict["date_reception"],
                             hostname=self.hostname,
                             diffpriority=priority,
@@ -102,6 +109,7 @@ class Notification():
                             req_id = self.req_id
                             )
 
+        # update the dictionary with the rest of the request information
         request_diff = self.compile_request()
         request_dump.update(request_diff)
 
@@ -113,6 +121,11 @@ class Notification():
     def compile_request(self):
 
         def dump_attributes(obj):
+            """
+            dump all the attributes of the FTPDiffusion and MailDiffusion
+            objects that are of interest for the dissemination into a dictionary,
+            plus a DiffusionType key to keep track of the type of the diffusion.
+            """
             from webservice.server.soapInterface import FTPDiffusion, MailDiffusion
             attr_dump = dict()
             if isinstance(obj, FTPDiffusion):
@@ -146,6 +159,7 @@ class Notification():
 
     def process(self):
 
+        # create the unicity key for the database
         self._diff_externalid = diff_id = Tools.generate_random_string()
 
         # fetch database
@@ -154,7 +168,7 @@ class Notification():
         try:
             # create JSON request file
             self.create_request_file()
-
+            # create the first database record
             diffusion = Diffusion(diff_externalid=diff_id,
                                   fullrequestId=self.req_id+self.hostname,
                                   requestStatus=REQ_STATUS.ongoing,

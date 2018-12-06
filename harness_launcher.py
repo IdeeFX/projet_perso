@@ -31,11 +31,18 @@ except ValueError:
 LOGGER = None
 
 def launch_named_process(proc, name):
+    """
+    launch a process and sets its name
+    as displayed by ps -ef | grep name
+    """
     if not DEBUG:
         setproctitle(name)
     proc()
 
 def get_logger():
+    """
+    Fetch logger
+    """
     SettingsManager.load_settings()
 
     # initialize LOGGER
@@ -45,11 +52,22 @@ def get_logger():
     return logger
 
 def launch(launch_logger=None, debug=True):
+    """
+    Launches the harness. This will launch the three modules
+    - harness_difmet_sender
+    - harness_file_manager
+    - harness_ack_receiver
+
+    The SOAP server is handled by MFSERV.
+    """
 
     if launch_logger is None:
         launch_logger = get_logger()
 
     def log_exception(exc, proc, i):
+        """
+        Catch the exception messages thrown back by an exception
+        """
         log_list = [("file_sender.sender", logging.getLogger("file_sender.sender")),
                     ("file_manager.manager", logging.getLogger("file_manager.manager")),
                     ("ack_receiver.ack_receiver", logging.getLogger("ack_receiver.ack_receiver"))
@@ -88,7 +106,8 @@ def launch(launch_logger=None, debug=True):
             launch_logger.info("Launching %s.", proc.__qualname__)
             # sleep to avoid concurrent access to database at startup
             sleep(1)
-        #if one crashes, it get restarted
+        # 
+        # Inspect the processes. If one crashes, it gets restarted.
         while True:
             sleep(10)
             for i, status in enumerate(process_status):
